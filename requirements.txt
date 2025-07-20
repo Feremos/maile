@@ -1,7 +1,9 @@
-fastapi
-uvicorn
-sqlalchemy
-jinja2
+fastapi # framework
+uvicorn # serwer ASGI
+sqlalchemy # ORM
+jinja2 # szablony HTML
 aiofiles  # potrzebne do serwowania statycznych plików
 python-multipart  # jeśli potem chcesz formularze
 gunicorn  # serwer produkcyjny
+passlib[bcrypt] # do haszowania haseł
+python-jose  # do obsługi JWT

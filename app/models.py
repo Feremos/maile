@@ -12,4 +12,4 @@ class Email(Base):
     content = Column(String)
     classification = Column(String)
     suggested_reply = Column(String)
-    received_at = Column(DateTime, default=datetime.uctnow)
+    received_at = Column(DateTime, default=datetime.utcnow)

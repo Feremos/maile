@@ -4,3 +4,4 @@ sqlalchemy
 jinja2
 aiofiles  # potrzebne do serwowania statycznych plików
 python-multipart  # jeśli potem chcesz formularze
+gunicorn  # serwer produkcyjny

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Maile użytkowników</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        .email { border: 1px solid #ccc; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; }
+        .classification { font-weight: bold; color: #444; }
+    </style>
+</head>
+<body>
+    <h1>📬 Maile użytkowników</h1>
+    {% for email in emails %}
+    <div class="email">
+        <p><strong>Od:</strong> {{ email.user_email }}</p>
+        <p><strong>Temat:</strong> {{ email.subject }}</p>
+        <p><strong>Treść:</strong> {{ email.content }}</p>
+        <p class="classification">📂 Klasyfikacja: {{ email.classification }}</p>
+        <p><strong>✉️ Proponowana odpowiedź:</strong> {{ email.suggested_reply }}</p>
+        <small>Odebrano: {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}</small>
+    </div>
+    {% endfor %}
+</body>
+</html>

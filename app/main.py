@@ -22,7 +22,7 @@ def get_db():
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db:Session = Depends(get_db)):
     emails = db.query(Email).order_by(Email.received_at.desc()).all()
-    return templates.TemplateResponse("index.html", {"request": request, "emails:":emails})
+    return templates.TemplateResponse("index.html", {"request": request, "emails:": emails})
 
 @app.post("/webhook")
 async def receive_email(

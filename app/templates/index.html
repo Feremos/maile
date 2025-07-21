@@ -7,17 +7,19 @@
         body { font-family: sans-serif; padding: 2rem; }
         .email { border: 1px solid #ccc; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; }
         .classification { font-weight: bold; color: #444; }
+        form textarea { width: 100%; height: 100px; margin-top: 0.5rem; }
+        form button { margin-top: 0.5rem; }
     </style>
 </head>
 <body>
-    <h1>📬 Maile użytkowników</h1>
+    <h1> Maile użytkowników</h1>
     {% for email in emails %}
     <div class="email">
         <p><strong>Od:</strong> {{ email.user_email }}</p>
         <p><strong>Temat:</strong> {{ email.subject }}</p>
         <p><strong>Treść:</strong> {{ email.content }}</p>
-        <p class="classification">📂 Klasyfikacja: {{ email.classification }}</p>
-        <p><strong>✉️ Proponowana odpowiedź:</strong> {{ email.suggested_reply }}</p>
+        <p class="classification"> Klasyfikacja: {{ email.classification }}</p>
+        
         <small>
         Odebrano:
         {% if email.received_at %}
@@ -27,6 +29,13 @@
         {% endif %}
         </small>
 
+        <!-- 🔽 Formularz odpowiedzi -->
+        <form method="post" action="/reply">
+            <input type="hidden" name="email_id" value="{{ email.id }}">
+            <label for="reply_{{ email.id }}"> Odpowiedź:</label><br>
+            <textarea name="reply_text" id="reply_{{ email.id }}">{{ email.suggested_reply }}</textarea><br>
+            <button type="submit">Wyślij odpowiedź</button>
+        </form>
     </div>
     {% endfor %}
 </body>

@@ -21,6 +21,9 @@ class Email(Base):
     classification = Column(String)
     suggested_reply = Column(String)
     received_at = Column(DateTime, default=datetime.utcnow)
+    mail_id = Column(String)       # ID wiadomości (np. Gmail Message-ID)
+    thread_id = Column(String)     # ID wątku (np. Gmail Thread-ID)
+    received_from = Column(String) # np. nazwa nadawcy (From)
     
 class GmailCredential(Base):
     __tablename__ = "gmail_credentials"

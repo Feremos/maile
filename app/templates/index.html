@@ -18,7 +18,15 @@
         <p><strong>Treść:</strong> {{ email.content }}</p>
         <p class="classification">📂 Klasyfikacja: {{ email.classification }}</p>
         <p><strong>✉️ Proponowana odpowiedź:</strong> {{ email.suggested_reply }}</p>
-        <small>Odebrano: {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}</small>
+        <small>
+        Odebrano:
+        {% if email.received_at %}
+            {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
+        {% else %}
+            brak daty
+        {% endif %}
+        </small>
+
     </div>
     {% endfor %}
 </body>

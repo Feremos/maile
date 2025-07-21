@@ -8,3 +8,4 @@ gunicorn  # serwer produkcyjny
 passlib[bcrypt] # do haszowania haseł
 python-jose  # do obsługi JWT
 pydantic[email]  # do walidacji emaili
+python-dotenv # do obsługi plików .env

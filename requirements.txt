@@ -12,3 +12,6 @@ python-dotenv # do obsługi plików .env
 psycopg2-binary # sterownik PostgreSQL
 fernet  # do szyfrowania danych
 cryptography  # do szyfrowania danych
+dotenv # do ładowania zmiennych środowiskowych
+passlib==1.7.4
+bcrypt==4.0.1

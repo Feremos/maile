@@ -11,8 +11,11 @@ from jose import JWTError, jwt
 import datetime
 from pydantic import BaseModel, EmailStr
 from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+import os
+# --- Konfiguracje ---s
 
-# --- Konfiguracje ---
+load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:

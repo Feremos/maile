@@ -94,7 +94,7 @@ async def receive_email(
     db.refresh(email)
     return {"status": "ok", "id": email.id}
 
-@app.post("/register")
+@app.post("/api/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = get_user(db, user.email)
     if db_user:

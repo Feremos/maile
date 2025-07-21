@@ -126,10 +126,8 @@ async def receive_email(
     thread_id: str = Form(None),
     received_from: str = Form(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie)
 ):
     email = Email(
-        user_id=current_user.id,
         user_email=user_email,
         subject=subject,
         content=content,

@@ -122,6 +122,9 @@ async def receive_email(
     content: str = Form(...),
     classification: str = Form(...),
     suggested_reply: str = Form(...),
+    mail_id: str = Form(None),
+    thread_id: str = Form(None),
+    received_from: str = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
@@ -131,12 +134,16 @@ async def receive_email(
         subject=subject,
         content=content,
         classification=classification,
-        suggested_reply=suggested_reply
+        suggested_reply=suggested_reply,
+        mail_id=mail_id,
+        thread_id=thread_id,
+        received_from=received_from
     )
     db.add(email)
     db.commit()
     db.refresh(email)
     return {"status": "ok", "id": email.id}
+
 
 @app.post("/token")
 def login(user: UserLogin, db: Session = Depends(get_db)):

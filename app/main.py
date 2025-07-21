@@ -112,7 +112,7 @@ def create_predefined_users():
 
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = db.query(Email).filter(Email.user_id == current_user.id).order_by(Email.received_at.desc()).all()
+    emails = db.query(Email).order_by(Email.received_at.desc()).all()
     return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
 
 @app.post("/webhook")
@@ -170,7 +170,7 @@ def logout():
     response.delete_cookie("user_email")
     return response
 
-@app.post("/gmail/add", response_class=HTMLResponse)
+#@app.post("/gmail/add", response_class=HTMLResponse)
 def add_gmail_credentials(
     request: Request,
     gmail_address: str = Form(...),

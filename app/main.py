@@ -1,15 +1,31 @@
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
+import os
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Query, Cookie
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from .db import SessionLocal, engine
-from .models import Base, Email, User
+from .models import Base, Email, User, GmailCredential
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import datetime
 from pydantic import BaseModel, EmailStr
-from fastapi.responses import RedirectResponse
+from cryptography.fernet import Fernet
+
+# --- Konfiguracje ---
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY not set in environment variables")
+
+FERNET_KEY = os.getenv("FERNET_KEY")
+if not FERNET_KEY:
+    raise RuntimeError("FERNET_KEY not set in environment variables")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+fernet = Fernet(FERNET_KEY.encode())
+
+# --- Modele Pydantic ---
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -19,10 +35,7 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-
-
-SECRET_KEY = "kluczsekretny" #ZMIENIC POTEM ZEBY NIE BYLO HARDCODED
-ALGORITHM = "HS256"
+# --- Funkcje pomocnicze ---
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -34,17 +47,20 @@ def create_access_token(data: dict, expires_delta: datetime.timedelta = None):
     to_encode = data.copy()
     expire = datetime.datetime.utcnow() + (expires_delta or datetime.timedelta(minutes=30))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
 
 def get_user(db, email: str):
     return db.query(User).filter(User.email == email).first()
 
+def encrypt_password(password: str) -> str:
+    return fernet.encrypt(password.encode()).decode()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def decrypt_password(token: str) -> str:
+    return fernet.decrypt(token.encode()).decode()
 
+# --- FastAPI setup ---
 
 Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
@@ -55,8 +71,6 @@ def get_db():
         yield db
     finally:
         db.close()
-        
-from fastapi import Cookie
 
 def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
     if not user_email:
@@ -66,6 +80,33 @@ def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str 
         raise HTTPException(status_code=401, detail="Nieprawidłowy użytkownik")
     return user
 
+# --- Endpointy ---
+
+@app.on_event("startup")
+def create_predefined_users():
+    db = SessionLocal()
+    users_env = os.getenv("USERS")
+    if not users_env:
+        print("No predefined users found in USERS env variable.")
+        return
+
+    try:
+        user_entries = [entry.strip() for entry in users_env.split(",") if entry.strip()]
+        for entry in user_entries:
+            try:
+                email, password = entry.split(":")
+            except ValueError:
+                print(f"Skipping invalid entry: {entry}")
+                continue
+            if not get_user(db, email):
+                hashed_pw = get_password_hash(password)
+                user = User(email=email, hashed_password=hashed_pw)
+                db.add(user)
+        db.commit()
+        print(f"Created or verified {len(user_entries)} predefined users.")
+    finally:
+        db.close()
+
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
     emails = db.query(Email).filter(Email.user_id == current_user.id).order_by(Email.received_at.desc()).all()
@@ -73,7 +114,7 @@ def read_emails(request: Request, db: Session = Depends(get_db), current_user: U
 
 @app.post("/webhook")
 async def receive_email(
-    user_email: str=Form(...),
+    user_email: str = Form(...),
     subject: str = Form(...),
     content: str = Form(...),
     classification: str = Form(...),
@@ -94,18 +135,6 @@ async def receive_email(
     db.refresh(email)
     return {"status": "ok", "id": email.id}
 
-@app.post("/api/register")
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = get_user(db, user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    hashed_password = get_password_hash(user.password)
-    new_user = User(email=user.email, hashed_password=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"msg": "User created"}
-
 @app.post("/token")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = get_user(db, user.email)
@@ -113,7 +142,6 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
-
 
 @app.get("/login", response_class=HTMLResponse)
 def login_form(request: Request):
@@ -128,25 +156,59 @@ def login_post(request: Request, db: Session = Depends(get_db), email: str = For
     response.set_cookie(key="user_email", value=user.email, httponly=True)
     return response
 
-@app.get("/register", response_class=HTMLResponse)
-def register_form(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
-
-@app.post("/register", response_class=HTMLResponse)
-def register_post(request: Request, db: Session = Depends(get_db), email: str = Form(...), password: str = Form(...)):
-    db_user = get_user(db, email)
-    if db_user:
-        return templates.TemplateResponse("register.html", {"request": request, "error": "Email już zarejestrowany"})
-    hashed_password = get_password_hash(password)
-    new_user = User(email=email, hashed_password=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return RedirectResponse(url="/login", status_code=302)
-
 @app.get("/logout")
 def logout():
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("user_email")
     return response
 
+@app.post("/gmail/add", response_class=HTMLResponse)
+def add_gmail_credentials(
+    request: Request,
+    gmail_address: str = Form(...),
+    gmail_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    encrypted_pw = encrypt_password(gmail_password)
+    creds = GmailCredential(
+        user_id=current_user.id,
+        gmail_address=gmail_address,
+        encrypted_password=encrypted_pw
+    )
+    db.add(creds)
+    db.commit()
+    db.refresh(creds)
+    return RedirectResponse(url="/", status_code=302)
+
+@app.get("/api/gmail-credentials")
+def get_gmail_credentials(
+    user_email: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    user = get_user(db, user_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    creds = db.query(GmailCredential).filter(GmailCredential.user_id == user.id).first()
+    if not creds:
+        raise HTTPException(status_code=404, detail="Gmail credentials not found")
+
+    return {
+        "gmail_address": creds.gmail_address,
+        "gmail_password": decrypt_password(creds.encrypted_password)
+    }
+
+@app.get("/api/gmail-credentials/me")
+def get_own_gmail_credentials(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    creds = db.query(GmailCredential).filter(GmailCredential.user_id == current_user.id).first()
+    if not creds:
+        raise HTTPException(status_code=404, detail="Gmail credentials not found")
+
+    return {
+        "gmail_address": creds.gmail_address,
+        "gmail_password": decrypt_password(creds.encrypted_password)
+    }

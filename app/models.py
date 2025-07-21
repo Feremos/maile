@@ -21,3 +21,14 @@ class Email(Base):
     classification = Column(String)
     suggested_reply = Column(String)
     received_at = Column(DateTime, default=datetime.utcnow)
+    
+class GmailCredential(Base):
+    __tablename__ = "gmail_credentials"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    gmail_address = Column(String, nullable=False)
+    encrypted_password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+

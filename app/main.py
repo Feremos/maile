@@ -1,17 +1,23 @@
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from .db import SessionLocal, engine
-from .models import Base, Email
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from .models import Base, Email, User
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
-from .models import User
 import datetime
-from fastapi import HTTPException, status
+from pydantic import BaseModel, EmailStr
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
 
 SECRET_KEY = "kluczsekretny" #ZMIENIC POTEM ZEBY NIE BYLO HARDCODED
 ALGORITHM = "HS256"
@@ -75,21 +81,21 @@ async def receive_email(
     return{"status": "ok", "id":email.id}
 
 @app.post("/register")
-def register(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = get_user(db, form_data.username)
-    if user:
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = get_user(db, user.email)
+    if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    hashed_password = get_password_hash(form_data.password)
-    new_user = User(email=form_data.username, hashed_password=hashed_password)
+    hashed_password = get_password_hash(user.password)
+    new_user = User(email=user.email, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {"msg": "User created"}
 
 @app.post("/token")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = get_user(db, form_data.username)
-    if not user or not verify_password(form_data.password, user.hashed_password):
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = get_user(db, user.email)
+    if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}

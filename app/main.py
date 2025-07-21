@@ -20,6 +20,7 @@ class UserLogin(BaseModel):
     password: str
 
 
+
 SECRET_KEY = "kluczsekretny" #ZMIENIC POTEM ZEBY NIE BYLO HARDCODED
 ALGORITHM = "HS256"
 
@@ -55,10 +56,20 @@ def get_db():
     finally:
         db.close()
         
+from fastapi import Cookie
+
+def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Nie jesteś zalogowany")
+    user = get_user(db, user_email)
+    if not user:
+        raise HTTPException(status_code=401, detail="Nieprawidłowy użytkownik")
+    return user
+
 @app.get("/", response_class=HTMLResponse)
-def read_emails(request: Request, db:Session = Depends(get_db)):
-    emails = db.query(Email).order_by(Email.received_at.desc()).all()
-    return templates.TemplateResponse("index.html", {"request": request, "emails": emails})
+def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
+    emails = db.query(Email).filter(Email.user_id == current_user.id).order_by(Email.received_at.desc()).all()
+    return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
 
 @app.post("/webhook")
 async def receive_email(
@@ -67,9 +78,11 @@ async def receive_email(
     content: str = Form(...),
     classification: str = Form(...),
     suggested_reply: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
 ):
     email = Email(
+        user_id=current_user.id,
         user_email=user_email,
         subject=subject,
         content=content,
@@ -79,7 +92,7 @@ async def receive_email(
     db.add(email)
     db.commit()
     db.refresh(email)
-    return{"status": "ok", "id":email.id}
+    return {"status": "ok", "id": email.id}
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -112,7 +125,7 @@ def login_post(request: Request, db: Session = Depends(get_db), email: str = For
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse("login.html", {"request": request, "error": "Nieprawidłowy email lub hasło"})
     response = RedirectResponse(url="/", status_code=302)
-    # Tu możesz dodać sesję/cookie z tokenem JWT (do dalszej rozbudowy)
+    response.set_cookie(key="user_email", value=user.email, httponly=True)
     return response
 
 @app.get("/register", response_class=HTMLResponse)
@@ -130,3 +143,10 @@ def register_post(request: Request, db: Session = Depends(get_db), email: str = 
     db.commit()
     db.refresh(new_user)
     return RedirectResponse(url="/login", status_code=302)
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie("user_email")
+    return response
+

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rejestracja</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h2>Rejestracja</h2>
+    <form method="post">
+        <label>Email: <input type="email" name="email" required></label><br>
+        <label>Hasło: <input type="password" name="password" required></label><br>
+        <button type="submit">Zarejestruj</button>
+    </form>
+    <p>Masz już konto? <a href="/login">Zaloguj się</a></p>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+</body>
+</html>

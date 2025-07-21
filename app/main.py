@@ -9,6 +9,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 import datetime
 from pydantic import BaseModel, EmailStr
+from fastapi.responses import RedirectResponse
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -99,3 +100,33 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login", response_class=HTMLResponse)
+def login_post(request: Request, db: Session = Depends(get_db), email: str = Form(...), password: str = Form(...)):
+    user = get_user(db, email)
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Nieprawidłowy email lub hasło"})
+    response = RedirectResponse(url="/", status_code=302)
+    # Tu możesz dodać sesję/cookie z tokenem JWT (do dalszej rozbudowy)
+    return response
+
+@app.get("/register", response_class=HTMLResponse)
+def register_form(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.post("/register", response_class=HTMLResponse)
+def register_post(request: Request, db: Session = Depends(get_db), email: str = Form(...), password: str = Form(...)):
+    db_user = get_user(db, email)
+    if db_user:
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Email już zarejestrowany"})
+    hashed_password = get_password_hash(password)
+    new_user = User(email=email, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return RedirectResponse(url="/login", status_code=302)

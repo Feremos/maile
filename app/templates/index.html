@@ -1,25 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Maile użytkowników</title>
-    <div class="tabs">
-    <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
-    <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
-    <a href="/category/reklamacja" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
-    <a href="/category/oferta" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
-    <a href="/category/rezygnacja" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
-    <a href="/category/brak%20klasyfikacji" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
-</div>
     <meta charset="UTF-8">
+    <title>Maile użytkowników</title>
     <style>
         body { font-family: sans-serif; padding: 2rem; }
         .email { border: 1px solid #ccc; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; }
         .classification { font-weight: bold; color: #444; }
         form textarea { width: 100%; height: 100px; margin-top: 0.5rem; }
         form button { margin-top: 0.5rem; }
+        .tabs a { margin-right: 0.5rem; text-decoration: none; }
+        .tabs a.active { font-weight: bold; color: green; }
     </style>
 </head>
 <body>
+    <div class="tabs">
+        <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
+        <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
+        <a href="/category/reklamacja" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
+        <a href="/category/oferta" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
+        <a href="/category/rezygnacja" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
+        <a href="/category/brak%20klasyfikacji" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
+    </div>
+
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}
@@ -27,31 +30,30 @@
         <p style="color: green;">{{ message }}</p>
     {% endif %}
 
-    <h1> Maile użytkowników</h1>
+    <h1>Maile użytkowników</h1>
     {% for email in emails %}
     <div class="email">
         <p><strong>Od:</strong> {{ email.user_email }}</p>
         <p><strong>Temat:</strong> {{ email.subject }}</p>
         <p><strong>Treść:</strong> {{ email.content }}</p>
-        <p class="classification"> Klasyfikacja: {{ email.classification }}</p>
+        <p class="classification">Klasyfikacja: {{ email.classification }}</p>
 
         {% if email.summary %}
         <p><strong>Streszczenie:</strong> {{ email.summary }}</p>
         {% endif %}
-        
+
         <small>
-        Odebrano:
-        {% if email.received_at %}
-            {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
-        {% else %}
-            brak daty
-        {% endif %}
+            Odebrano:
+            {% if email.received_at %}
+                {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
+            {% else %}
+                brak daty
+            {% endif %}
         </small>
 
-        <!-- 🔽 Formularz odpowiedzi -->
         <form method="post" action="/reply">
             <input type="hidden" name="email_id" value="{{ email.id }}">
-            <label for="reply_{{ email.id }}"> Odpowiedź:</label><br>
+            <label for="reply_{{ email.id }}">Odpowiedź:</label><br>
             <textarea name="reply_text" id="reply_{{ email.id }}">{{ email.suggested_reply }}</textarea><br>
             <button type="submit">Wyślij odpowiedź</button>
         </form>

@@ -13,6 +13,9 @@ from pydantic import BaseModel, EmailStr
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 import os
+import smtplib
+from email.message import EmailMessage
+
 # --- Konfiguracje ---s
 
 load_dotenv()
@@ -170,3 +173,37 @@ def logout():
     response.delete_cookie("user_email")
     return response
 
+@app.post("/reply")
+def send_reply(
+    request: Request,
+    email_id: int = Form(...),
+    reply_text: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie),
+):
+    email = db.query(Email).filter(Email.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
+
+    # Wyślij e-mail
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = f"Odpowiedź: {email.subject}"
+        msg["From"] = os.getenv("SMTP_FROM_EMAIL")
+        msg["To"] = email.user_email
+        msg.set_content(reply_text)
+
+        with smtplib.SMTP(os.getenv("SMTP_SERVER"), int(os.getenv("SMTP_PORT"))) as server:
+            if os.getenv("SMTP_USE_TLS") == "true":
+                server.starttls()
+            server.login(os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD"))
+            server.send_message(msg)
+    except Exception as e:
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "emails": db.query(Email).order_by(Email.received_at.desc()).all(),
+            "user": current_user,
+            "error": f"Błąd podczas wysyłania maila: {e}"
+        })
+
+    return RedirectResponse(url="/", status_code=302)

@@ -12,6 +12,13 @@
     </style>
 </head>
 <body>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    {% if message %}
+        <p style="color: green;">{{ message }}</p>
+    {% endif %}
+
     <h1> Maile użytkowników</h1>
     {% for email in emails %}
     <div class="email">

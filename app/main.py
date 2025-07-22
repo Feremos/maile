@@ -125,6 +125,7 @@ async def receive_email(
     content: str = Form(...),
     classification: str = Form(...),
     suggested_reply: str = Form(...),
+    summary: str = Form(None),
     mail_id: str = Form(None),
     thread_id: str = Form(None),
     received_from: str = Form(None),
@@ -136,6 +137,7 @@ async def receive_email(
         content=content,
         classification=classification,
         suggested_reply=suggested_reply,
+        summary=summary,
         mail_id=mail_id,
         thread_id=thread_id,
         received_from=received_from

@@ -26,6 +26,10 @@
         <p><strong>Temat:</strong> {{ email.subject }}</p>
         <p><strong>Treść:</strong> {{ email.content }}</p>
         <p class="classification"> Klasyfikacja: {{ email.classification }}</p>
+
+        {% if email.summary %}
+        <p><strong>Streszczenie:</strong> {{ email.summary }}</p>
+        {% endif %}
         
         <small>
         Odebrano:

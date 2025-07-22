@@ -115,8 +115,9 @@ def create_predefined_users():
 
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = db.query(Email).order_by(Email.received_at.desc()).all()
+    emails = db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all()
     return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
+
 
 @app.post("/webhook")
 async def receive_email(
@@ -200,10 +201,16 @@ def send_reply(
                 server.starttls()
             server.login(os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD"))
             server.send_message(msg)
+            
+        email.is_archived = True
+        db.commit()
+
+        return RedirectResponse(url="/", status_code=302)
+        
     except Exception as e:
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "emails": db.query(Email).order_by(Email.received_at.desc()).all(),
+            "emails": db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all(),
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })
@@ -226,6 +233,16 @@ def read_emails_by_category(
         "emails": emails,
         "user": current_user,
         "active_category": category_name
+    })
+    
+@app.get("/archiwum", response_class=HTMLResponse)
+def archived_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
+    emails = db.query(Email).filter(Email.is_archived == True).order_by(Email.received_at.desc()).all()
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": emails,
+        "user": current_user,
+        "active_category": "archiwum"
     })
 
 

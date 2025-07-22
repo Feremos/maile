@@ -2,6 +2,14 @@
 <html>
 <head>
     <title>Maile użytkowników</title>
+    <div class="tabs">
+    <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
+    <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
+    <a href="/category/reklamacja" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
+    <a href="/category/oferta" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
+    <a href="/category/rezygnacja" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
+    <a href="/category/brak%20klasyfikacji" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
+</div>
     <meta charset="UTF-8">
     <style>
         body { font-family: sans-serif; padding: 2rem; }

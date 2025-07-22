@@ -207,5 +207,26 @@ def send_reply(
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })
+        
+@app.get("/category/{category_name}", response_class=HTMLResponse)
+def read_emails_by_category(
+    category_name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    allowed_categories = ["faktura", "reklamacja", "oferta", "rezygnacja", "brak klasyfikacji"]
+    if category_name not in allowed_categories:
+        raise HTTPException(status_code=404, detail="Nieprawidłowa kategoria")
+
+    emails = db.query(Email).filter(Email.classification == category_name).order_by(Email.received_at.desc()).all()
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": emails,
+        "user": current_user,
+        "active_category": category_name
+    })
+
 
     return RedirectResponse(url="/", status_code=302)

@@ -25,6 +25,7 @@ class Email(Base):
     mail_id = Column(String)       # ID wiadomości (np. Gmail Message-ID)
     thread_id = Column(String)     # ID wątku (np. Gmail Thread-ID)
     received_from = Column(String) # np. nazwa nadawcy (From)
+    is_archived = Column(Boolean, default=False)
     
 class GmailCredential(Base):
     __tablename__ = "gmail_credentials"
@@ -35,4 +36,3 @@ class GmailCredential(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
-

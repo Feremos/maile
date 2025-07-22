@@ -18,6 +18,7 @@ class Email(Base):
     user_email = Column(String, index=True)
     subject = Column(String)
     content = Column(String)
+    summary = Column(Text)
     classification = Column(String)
     suggested_reply = Column(String)
     received_at = Column(DateTime, default=datetime.utcnow)

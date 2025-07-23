@@ -116,7 +116,8 @@
     <h1>📬 Maile użytkowników</h1>
     {% for email in emails %}
     <div class="email">
-        <p><strong>📧 Od:</strong> {{ email.user_email }}</p>
+        <p><strong>📧 Od:</strong> {{ email.sent_from }}</p>
+        <p><strong>📧 Do:</strong> {{ email.sent_to }}</p>
         <p><strong>✉️ Temat:</strong> {{ email.subject }}</p>
         <p><strong>📝 Treść:</strong> {{ email.content }}</p>
         <p class="classification">🏷️ {{ email.classification }}</p>

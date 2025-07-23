@@ -16,7 +16,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-class MailCredentials(Base):
+class GmailCredentials(Base):
     __tablename__ = "mail_credentials"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, nullable=False)

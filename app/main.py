@@ -182,39 +182,46 @@ def send_reply(
     email_id: int = Form(...),
     reply_text: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie),
+    current_user = Depends(get_current_user_from_cookie),
 ):
+    # Pobierz wiadomość
     email = db.query(Email).filter(Email.id == email_id).first()
     if not email:
         raise HTTPException(status_code=404, detail="Email nie znaleziony")
 
-    # Pobierz dane logowania na podstawie email.sent_to
-    credentials = db.query(GmailCredentials).filter(GmailCredentials.login == email.sent_to).first()
+    # Pobierz dane SMTP z gmail_credentials na podstawie adresu docelowego (sent_to)
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.email == email.sent_to).first()
     if not credentials:
         raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
 
     try:
+        # Utwórz wiadomość e-mail
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
-        msg["From"] = credentials.email
-        msg["To"] = email.sent_to
+        msg["From"] = credentials.login  # prawdziwy login Gmaila
+        msg["To"] = email.received_from  # nadawca oryginalnej wiadomości
         msg.set_content(reply_text)
 
-        with smtplib.SMTP(credentials.smtp_server, int(credentials.smtp_port)) as server:
-            if credentials.smtp_use_tls:
+        # Połączenie z serwerem SMTP
+        with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
+            if credentials.use_tls:
                 server.starttls()
-            server.login(credentials.smtp_username, decrypt_password(credentials.smtp_password))
+
+            decrypted_password = decrypt_password(credentials.encrypted_password)
+            server.login(credentials.login, decrypted_password)
             server.send_message(msg)
 
+        # Oznacz wiadomość jako zarchiwizowaną
         email.is_archived = True
         db.commit()
 
         return RedirectResponse(url="/", status_code=302)
 
     except Exception as e:
+        emails = db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all()
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "emails": db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all(),
+            "emails": emails,
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })

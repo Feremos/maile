@@ -188,25 +188,29 @@ def send_reply(
     if not email:
         raise HTTPException(status_code=404, detail="Email nie znaleziony")
 
-    # Wyślij e-mail
+    # Pobierz dane logowania na podstawie email.sent_to
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.email == email.sent_to).first()
+    if not credentials:
+        raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
+
     try:
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
-        msg["From"] = os.getenv("SMTP_FROM_EMAIL")
+        msg["From"] = credentials.email
         msg["To"] = email.user_email
         msg.set_content(reply_text)
 
-        with smtplib.SMTP(os.getenv("SMTP_SERVER"), int(os.getenv("SMTP_PORT"))) as server:
-            if os.getenv("SMTP_USE_TLS") == "true":
+        with smtplib.SMTP(credentials.smtp_server, int(credentials.smtp_port)) as server:
+            if credentials.smtp_use_tls:
                 server.starttls()
-            server.login(os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD"))
+            server.login(credentials.smtp_username, decrypt_password(credentials.smtp_password))
             server.send_message(msg)
-            
+
         email.is_archived = True
         db.commit()
 
         return RedirectResponse(url="/", status_code=302)
-        
+
     except Exception as e:
         return templates.TemplateResponse("index.html", {
             "request": request,
@@ -214,6 +218,7 @@ def send_reply(
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })
+
 
 
 

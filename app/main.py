@@ -190,7 +190,7 @@ def send_reply(
         raise HTTPException(status_code=404, detail="Email nie znaleziony")
 
     # Pobierz dane SMTP z gmail_credentials na podstawie adresu docelowego (sent_to)
-    credentials = db.query(GmailCredentials).filter(GmailCredentials.email == email.sent_to).first()
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.login == email.sent_to).first()
     if not credentials:
         raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
 

@@ -3,14 +3,29 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from .db import Base
 from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import create_engine
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
 
+class MailCredentials(Base):
+    __tablename__ = "mail_credentials"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False)
+    login = Column(String, nullable=False)
+    encrypted_password = Column(String, nullable=False)
+    smtp_server = Column(String, nullable=False)
+    smtp_port = Column(Integer, nullable=False)
+    use_tls = Column(Boolean, default=True)
+    
 class Email(Base):
     __tablename__ = "emails"
     id = Column(Integer, primary_key=True, index=True)
@@ -27,12 +42,8 @@ class Email(Base):
     received_from = Column(String) # np. nazwa nadawcy (From)
     is_archived = Column(Boolean, default=False)
     
-class GmailCredential(Base):
-    __tablename__ = "gmail_credentials"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    gmail_address = Column(String, nullable=False)
-    encrypted_password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    
+Base.metadata.create_all(bind=engine)
 
-    user = relationship("User")
+
+

@@ -199,7 +199,7 @@ def send_reply(
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
         msg["From"] = credentials.login  # prawdziwy login Gmaila
-        msg["To"] = email.received_from  # nadawca oryginalnej wiadomości
+        msg["To"] = email.sent_from  # nadawca oryginalnej wiadomości
         msg.set_content(reply_text)
 
         # Połączenie z serwerem SMTP

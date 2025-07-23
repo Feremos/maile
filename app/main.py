@@ -175,56 +175,63 @@ def logout():
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("user_email")
     return response
+import re
 
+def extract_email(full_string: str) -> str:
+    match = re.search(r'<([^>]+)>', full_string)
+    if match:
+        return match.group(1)
+    else:
+        # jeśli brak <>, to zwróć cały string (może to być sam email)
+        return full_string.strip()
 @app.post("/reply")
 def send_reply(
     request: Request,
     email_id: int = Form(...),
     reply_text: str = Form(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user_from_cookie),
+    current_user: User = Depends(get_current_user_from_cookie),
 ):
-    # Pobierz wiadomość
     email = db.query(Email).filter(Email.id == email_id).first()
     if not email:
         raise HTTPException(status_code=404, detail="Email nie znaleziony")
 
-    # Pobierz dane SMTP z gmail_credentials na podstawie adresu docelowego (sent_to)
+    # Wyciągamy czysty email z sent_from
+    recipient_email = extract_email(email.sent_from)
+
+    # Szukamy credentials po sent_to (nadawca maila, czyli login konta)
     credentials = db.query(GmailCredentials).filter(GmailCredentials.login == email.sent_to).first()
     if not credentials:
         raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
 
     try:
-        # Utwórz wiadomość e-mail
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
-        msg["From"] = credentials.login  # prawdziwy login Gmaila
-        msg["To"] = email.sent_from  # nadawca oryginalnej wiadomości
+        msg["From"] = credentials.login  # email do logowania i wysyłania
+        msg["To"] = recipient_email       # czysty email odbiorcy
         msg.set_content(reply_text)
 
-        # Połączenie z serwerem SMTP
         with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
             if credentials.use_tls:
                 server.starttls()
-
-            decrypted_password = decrypt_password(credentials.encrypted_password)
-            server.login(credentials.login, decrypted_password)
+            # odszyfruj hasło
+            password = decrypt_password(credentials.encrypted_password)
+            server.login(credentials.login, password)
             server.send_message(msg)
 
-        # Oznacz wiadomość jako zarchiwizowaną
         email.is_archived = True
         db.commit()
 
         return RedirectResponse(url="/", status_code=302)
 
     except Exception as e:
-        emails = db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all()
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "emails": emails,
+            "emails": db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all(),
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })
+
 
 
 

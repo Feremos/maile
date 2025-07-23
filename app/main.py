@@ -214,7 +214,9 @@ def send_reply(
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })
-        
+
+
+
 @app.get("/category/{category_name}", response_class=HTMLResponse)
 def read_emails_by_category(
     category_name: str,
@@ -226,7 +228,10 @@ def read_emails_by_category(
     if category_name not in allowed_categories:
         raise HTTPException(status_code=404, detail="Nieprawidłowa kategoria")
 
-    emails = db.query(Email).filter(Email.classification == category_name).order_by(Email.received_at.desc()).all()
+    emails = db.query(Email).filter(
+        Email.classification == category_name,
+        Email.is_archived == False
+    ).order_by(Email.received_at.desc()).all()
 
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -234,6 +239,7 @@ def read_emails_by_category(
         "user": current_user,
         "active_category": category_name
     })
+
     
 @app.get("/archiwum", response_class=HTMLResponse)
 def archived_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):

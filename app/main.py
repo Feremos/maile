@@ -205,9 +205,7 @@ def send_reply(
     print(f"[DEBUG] sent_to_clean: '{sent_to_clean}'")
     
     # Szukamy danych logowania dla tego sent_to
-    credentials = db.query(GmailCredentials).filter(
-        GmailCredentials.login.ilike(sent_to_clean)
-    ).first()
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.login == 'brajn4@gmail.com').first()
     
     if not credentials:
         print(f"[DEBUG] Brak wpisu w gmail_credentials dla login = '{sent_to_clean}'")

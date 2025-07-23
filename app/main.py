@@ -197,52 +197,57 @@ def send_reply(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie),
 ):
-    # 1. Pobierz email po id
-    email = db.query(Email).filter(Email.id == email_id).first()
-    if not email:
-        raise HTTPException(status_code=404, detail="Email nie znaleziony")
-
-    # 2. Wyczyść adres nadawcy z email.sent_to (usuwamy spacje i małe litery)
-    sent_to_clean = email.sent_to.strip().lower()
-    
-    # 3. Znajdź dane SMTP dla tego nadawcy (login w GmailCredentials)
-    credentials = db.query(GmailCredentials).filter(
-        GmailCredentials.login.ilike(sent_to_clean)
-    ).first()
-
-    if not credentials:
-        raise HTTPException(status_code=500, detail=f"Brak danych SMTP dla nadawcy: {sent_to_clean}")
-
-    # 4. Przygotuj maila do wysłania
     try:
+        email = db.query(Email).filter(Email.id == email_id).first()
+        if not email:
+            raise HTTPException(status_code=404, detail="Email nie znaleziony")
+        print(f"[DEBUG] Email ID: {email.id}")
+        print(f"[DEBUG] email.sent_to (nadawca): '{email.sent_to}'")
+        print(f"[DEBUG] email.sent_from (odbiorca): '{email.sent_from}'")
+
+        sent_to_clean = email.sent_to.strip().lower()
+        print(f"[DEBUG] sent_to_clean (login do gmail_credentials): '{sent_to_clean}'")
+
+        credentials = db.query(GmailCredentials).filter(
+            GmailCredentials.login.ilike(sent_to_clean)
+        ).first()
+        if not credentials:
+            print(f"[DEBUG] Brak wpisu w gmail_credentials dla login = '{sent_to_clean}'")
+            raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
+
+        print(f"[DEBUG] credentials found: email={credentials.email}, login={credentials.login}, smtp_server={credentials.smtp_server}")
+
+        # Odbiorca w czystym formacie
+        match = re.search(r'<(.+?)>', email.sent_from)
+        recipient = match.group(1) if match else email.sent_from.strip()
+        print(f"[DEBUG] extracted recipient email: '{recipient}'")
+
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
         msg["From"] = credentials.login
-        # email.sent_from może mieć format: 'Mateusz Rak <mateuszrak2k@gmail.com>'
-        # wyciągnij czysty adres e-mail odbiorcy:
-        import re
-        match = re.search(r'<(.+?)>', email.sent_from)
-        recipient = match.group(1) if match else email.sent_from.strip()
-
         msg["To"] = recipient
         msg.set_content(reply_text)
 
-        # 5. Połącz z SMTP i wyślij maila
+        print("[DEBUG] Próba połączenia z serwerem SMTP...")
         with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
             if credentials.use_tls:
+                print("[DEBUG] Uruchamiam STARTTLS...")
                 server.starttls()
             decrypted_password = decrypt_password(credentials.encrypted_password)
+            print(f"[DEBUG] Zaszyfrowane hasło odszyfrowane.")
             server.login(credentials.login, decrypted_password)
+            print("[DEBUG] Zalogowano do SMTP.")
             server.send_message(msg)
+            print("[DEBUG] Wiadomość wysłana.")
 
-        # 6. Archiwizuj email
         email.is_archived = True
         db.commit()
+        print("[DEBUG] Email oznaczony jako zarchiwizowany.")
 
         return RedirectResponse(url="/", status_code=302)
 
     except Exception as e:
-        # Tu możesz dopisać logowanie błędu jeśli chcesz (print lub logger)
+        print(f"[ERROR] Błąd: {e}")
         raise HTTPException(status_code=500, detail=f"Błąd podczas wysyłania maila: {str(e)}")
 
 

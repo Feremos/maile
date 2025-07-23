@@ -30,7 +30,8 @@ class Email(Base):
     __tablename__ = "emails"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    user_email = Column(String, index=True)
+    sent_from = Column(String, index=True)
+    sent_to = Column(String)
     subject = Column(String)
     content = Column(String)
     summary = Column(String)

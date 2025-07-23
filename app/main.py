@@ -196,10 +196,7 @@ def send_reply(
     if not email:
         raise HTTPException(status_code=404, detail="Email nie znaleziony")
 
-    # Wyciągamy czysty email z sent_from
-    recipient_email = extract_email(email.sent_from)
-
-    # Szukamy credentials po sent_to (nadawca maila, czyli login konta)
+    # Pobierz dane logowania SMTP na podstawie nadawcy (email.sent_to)
     credentials = db.query(GmailCredentials).filter(GmailCredentials.login == email.sent_to).first()
     if not credentials:
         raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
@@ -207,18 +204,21 @@ def send_reply(
     try:
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
-        msg["From"] = credentials.login  # email do logowania i wysyłania
-        msg["To"] = recipient_email       # czysty email odbiorcy
+        msg["From"] = credentials.login  # adres z którego wysyłasz
+        # Usuń imię/nazwisko z email.sent_from, zostaw sam email
+        import re
+        recipient_email_match = re.search(r'<(.+?)>', email.sent_from)
+        recipient_email = recipient_email_match.group(1) if recipient_email_match else email.sent_from
+        msg["To"] = recipient_email
         msg.set_content(reply_text)
 
         with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
             if credentials.use_tls:
                 server.starttls()
-            # odszyfruj hasło
-            password = decrypt_password(credentials.encrypted_password)
-            server.login(credentials.login, password)
+            server.login(credentials.login, decrypt_password(credentials.encrypted_password))
             server.send_message(msg)
 
+        # Po wysłaniu archiwizuj email
         email.is_archived = True
         db.commit()
 

@@ -197,7 +197,7 @@ def send_reply(
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
         msg["From"] = credentials.email
-        msg["To"] = email.user_email
+        msg["To"] = email.sent_to
         msg.set_content(reply_text)
 
         with smtplib.SMTP(credentials.smtp_server, int(credentials.smtp_port)) as server:

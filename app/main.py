@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from .db import SessionLocal, engine
-from .models import Base, Email, User, GmailCredential
+from .models import Base, Email, User, GmailCredentials
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import datetime

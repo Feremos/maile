@@ -195,21 +195,36 @@ def send_reply(
     email = db.query(Email).filter(Email.id == email_id).first()
     if not email:
         raise HTTPException(status_code=404, detail="Email nie znaleziony")
-
-    # Pobierz dane logowania SMTP na podstawie nadawcy (email.sent_to)
-    credentials = db.query(GmailCredentials).filter(GmailCredentials.login == email.sent_to).first()
+    
+    print(f"[DEBUG] email.id: {email.id}")
+    print(f"[DEBUG] email.sent_to (nadawca): '{email.sent_to}'")
+    print(f"[DEBUG] email.sent_from (odbiorca): '{email.sent_from}'")
+    
+    # Czyszczenie sent_to
+    sent_to_clean = email.sent_to.strip().lower()
+    print(f"[DEBUG] sent_to_clean: '{sent_to_clean}'")
+    
+    # Szukamy danych logowania dla tego sent_to
+    credentials = db.query(GmailCredentials).filter(
+        GmailCredentials.login.ilike(sent_to_clean)
+    ).first()
+    
     if not credentials:
+        print(f"[DEBUG] Brak wpisu w gmail_credentials dla login = '{sent_to_clean}'")
         raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
-
+    
+    print(f"[DEBUG] Znalezione dane SMTP:")
+    print(f"  email: {credentials.email}")
+    print(f"  login: {credentials.login}")
+    print(f"  smtp_server: {credentials.smtp_server}")
+    print(f"  smtp_port: {credentials.smtp_port}")
+    print(f"  use_tls: {credentials.use_tls}")
+    
     try:
         msg = EmailMessage()
         msg["Subject"] = f"Odpowiedź: {email.subject}"
-        msg["From"] = credentials.login  # adres z którego wysyłasz
-        # Usuń imię/nazwisko z email.sent_from, zostaw sam email
-        import re
-        recipient_email_match = re.search(r'<(.+?)>', email.sent_from)
-        recipient_email = recipient_email_match.group(1) if recipient_email_match else email.sent_from
-        msg["To"] = recipient_email
+        msg["From"] = credentials.email
+        msg["To"] = email.sent_from
         msg.set_content(reply_text)
 
         with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
@@ -218,19 +233,20 @@ def send_reply(
             server.login(credentials.login, decrypt_password(credentials.encrypted_password))
             server.send_message(msg)
 
-        # Po wysłaniu archiwizuj email
         email.is_archived = True
         db.commit()
 
         return RedirectResponse(url="/", status_code=302)
 
     except Exception as e:
+        print(f"[DEBUG] Błąd podczas wysyłania maila: {e}")
         return templates.TemplateResponse("index.html", {
             "request": request,
             "emails": db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all(),
             "user": current_user,
             "error": f"Błąd podczas wysyłania maila: {e}"
         })
+
 
 
 

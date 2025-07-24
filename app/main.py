@@ -1,38 +1,41 @@
 import os
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Query, Cookie
+import re
+import datetime
+import smtplib
+from email.message import EmailMessage
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from .db import SessionLocal, engine
-from .models import Base, Email, User, GmailCredentials
-from passlib.context import CryptContext
 from jose import JWTError, jwt
-import datetime
-from pydantic import BaseModel, EmailStr
+from passlib.context import CryptContext
 from cryptography.fernet import Fernet
-from dotenv import load_dotenv
-import os
-import smtplib
-from email.message import EmailMessage
+from pydantic import BaseModel, EmailStr
 
-# --- Konfiguracje ---s
+from .db import SessionLocal, engine
+from .models import Base, User, Email, GmailCredentials, EmailAccount, user_email_accounts
 
+# --- Inicjalizacja ---
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY not set in environment variables")
-
 FERNET_KEY = os.getenv("FERNET_KEY")
-if not FERNET_KEY:
-    raise RuntimeError("FERNET_KEY not set in environment variables")
+
+if not SECRET_KEY or not FERNET_KEY:
+    raise RuntimeError("Brak kluczy .env")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 fernet = Fernet(FERNET_KEY.encode())
 
-# --- Modele Pydantic ---
+Base.metadata.create_all(bind=engine)
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
 
+
+# --- Schematy ---
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -41,13 +44,19 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-# --- Funkcje pomocnicze ---
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+# --- Pomocnicze funkcje ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def get_password_hash(password): return pwd_context.hash(password)
+def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)
+def encrypt_password(password): return fernet.encrypt(password.encode()).decode()
+def decrypt_password(token): return fernet.decrypt(token.encode()).decode()
 
 def create_access_token(data: dict, expires_delta: datetime.timedelta = None):
     to_encode = data.copy()
@@ -55,28 +64,7 @@ def create_access_token(data: dict, expires_delta: datetime.timedelta = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
 
-def get_user(db, email: str):
-    return db.query(User).filter(User.email == email).first()
-
-def encrypt_password(password: str) -> str:
-    return fernet.encrypt(password.encode()).decode()
-
-def decrypt_password(token: str) -> str:
-    return fernet.decrypt(token.encode()).decode()
-
-# --- FastAPI setup ---
-
-Base.metadata.create_all(bind=engine)
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def get_user(db, email: str): return db.query(User).filter(User.login_app == email).first()
 
 def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
     if not user_email:
@@ -86,39 +74,89 @@ def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str 
         raise HTTPException(status_code=401, detail="Nieprawidłowy użytkownik")
     return user
 
-# --- Endpointy ---
+def extract_email(full: str):
+    match = re.search(r'<([^>]+)>', full)
+    return match.group(1) if match else full.strip()
 
+
+# --- Startowe tworzenie użytkowników ---
 @app.on_event("startup")
 def create_predefined_users():
     db = SessionLocal()
     users_env = os.getenv("USERS")
     if not users_env:
-        print("No predefined users found in USERS env variable.")
         return
-
     try:
-        user_entries = [entry.strip() for entry in users_env.split(",") if entry.strip()]
-        for entry in user_entries:
+        for entry in users_env.split(","):
             try:
-                email, password = entry.split(":")
+                email, password = entry.strip().split(":")
+                if not get_user(db, email):
+                    user = User(login_app=email, hashed_password=get_password_hash(password))
+                    db.add(user)
             except ValueError:
-                print(f"Skipping invalid entry: {entry}")
                 continue
-            if not get_user(db, email):
-                hashed_pw = get_password_hash(password)
-                user = User(email=email, hashed_password=hashed_pw)
-                db.add(user)
         db.commit()
-        print(f"Created or verified {len(user_entries)} predefined users.")
     finally:
         db.close()
 
+
+# --- Widoki ---
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = db.query(Email).filter(Email.is_archived == False).order_by(Email.received_at.desc()).all()
+    emails = db.query(Email).join(Email.account).join(EmailAccount.users).filter(
+        User.id == current_user.id,
+        Email.is_archived == False
+    ).order_by(Email.received_at.desc()).all()
+
     return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
 
+@app.get("/archiwum", response_class=HTMLResponse)
+def archived_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
+    emails = db.query(Email).join(Email.account).join(EmailAccount.users).filter(
+        User.id == current_user.id,
+        Email.is_archived == True
+    ).order_by(Email.received_at.desc()).all()
 
+    return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user, "active_category": "archiwum"})
+
+
+@app.get("/category/{category_name}", response_class=HTMLResponse)
+def read_emails_by_category(category_name: str, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
+    allowed = ["faktura", "reklamacja", "oferta", "rezygnacja", "brak klasyfikacji"]
+    if category_name not in allowed:
+        raise HTTPException(status_code=404, detail="Nieprawidłowa kategoria")
+
+    emails = db.query(Email).join(Email.account).join(EmailAccount.users).filter(
+        User.id == current_user.id,
+        Email.classification == category_name,
+        Email.is_archived == False
+    ).order_by(Email.received_at.desc()).all()
+
+    return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user, "active_category": category_name})
+
+
+# --- Logowanie ---
+@app.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login", response_class=HTMLResponse)
+def login_post(request: Request, db: Session = Depends(get_db), email: str = Form(...), password: str = Form(...)):
+    user = get_user(db, email)
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Nieprawidłowy email lub hasło"})
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(key="user_email", value=user.login_app, httponly=True)
+    return response
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie("user_email")
+    return response
+
+
+# --- Webhook do odbioru maili ---
 @app.post("/webhook")
 async def receive_email(
     user_email: str = Form(...),
@@ -132,8 +170,12 @@ async def receive_email(
     received_from: str = Form(None),
     db: Session = Depends(get_db),
 ):
+    account = db.query(EmailAccount).filter(EmailAccount.email_address.ilike(user_email)).first()
+    if not account:
+        raise HTTPException(status_code=400, detail="Nie znaleziono konta e-mail")
+
     email = Email(
-        user_email=user_email,
+        email_account_id=account.id,
         subject=subject,
         content=content,
         classification=classification,
@@ -141,7 +183,9 @@ async def receive_email(
         summary=summary,
         mail_id=mail_id,
         thread_id=thread_id,
-        received_from=received_from
+        received_from=received_from,
+        sent_to=user_email,
+        sent_from=received_from
     )
     db.add(email)
     db.commit()
@@ -149,146 +193,33 @@ async def receive_email(
     return {"status": "ok", "id": email.id}
 
 
-@app.post("/token")
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = get_user(db, user.email)
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    access_token = create_access_token(data={"sub": db_user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@app.get("/login", response_class=HTMLResponse)
-def login_form(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/login", response_class=HTMLResponse)
-def login_post(request: Request, db: Session = Depends(get_db), email: str = Form(...), password: str = Form(...)):
-    user = get_user(db, email)
-    if not user or not verify_password(password, user.hashed_password):
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Nieprawidłowy email lub hasło"})
-    response = RedirectResponse(url="/", status_code=302)
-    response.set_cookie(key="user_email", value=user.email, httponly=True)
-    return response
-
-@app.get("/logout")
-def logout():
-    response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie("user_email")
-    return response
-import re
-
-def extract_email(full_string: str) -> str:
-    match = re.search(r'<([^>]+)>', full_string)
-    if match:
-        return match.group(1)
-    else:
-        # jeśli brak <>, to zwróć cały string (może to być sam email)
-        return full_string.strip()
-from fastapi import Form, Depends, HTTPException
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
-from email.message import EmailMessage
-import smtplib
-
+# --- Wysyłanie odpowiedzi ---
 @app.post("/reply")
-def send_reply(
-    email_id: int = Form(...),
-    reply_text: str = Form(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie),
-):
-    try:
-        email = db.query(Email).filter(Email.id == email_id).first()
-        if not email:
-            raise HTTPException(status_code=404, detail="Email nie znaleziony")
-        print(f"[DEBUG] Email ID: {email.id}")
-        print(f"[DEBUG] email.sent_to (nadawca): '{email.sent_to}'")
-        print(f"[DEBUG] email.sent_from (odbiorca): '{email.sent_from}'")
+def send_reply(email_id: int = Form(...), reply_text: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
+    email = db.query(Email).filter(Email.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
 
-        sent_to_clean = email.sent_to.strip().lower()
-        print(f"[DEBUG] sent_to_clean (login do gmail_credentials): '{sent_to_clean}'")
+    sent_to_clean = email.sent_to.strip().lower()
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(sent_to_clean)).first()
+    if not credentials:
+        raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
 
-        credentials = db.query(GmailCredentials).filter(
-            GmailCredentials.login.ilike(sent_to_clean)
-        ).first()
-        if not credentials:
-            print(f"[DEBUG] Brak wpisu w gmail_credentials dla login = '{sent_to_clean}'")
-            raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
+    recipient = extract_email(email.sent_from)
 
-        print(f"[DEBUG] credentials found: email={credentials.email}, login={credentials.login}, smtp_server={credentials.smtp_server}")
+    msg = EmailMessage()
+    msg["Subject"] = f"Odpowiedź: {email.subject}"
+    msg["From"] = credentials.login
+    msg["To"] = recipient
+    msg.set_content(reply_text)
 
-        # Odbiorca w czystym formacie
-        match = re.search(r'<(.+?)>', email.sent_from)
-        recipient = match.group(1) if match else email.sent_from.strip()
-        print(f"[DEBUG] extracted recipient email: '{recipient}'")
+    with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
+        if credentials.use_tls:
+            server.starttls()
+        decrypted_password = decrypt_password(credentials.encrypted_password)
+        server.login(credentials.login, decrypted_password)
+        server.send_message(msg)
 
-        msg = EmailMessage()
-        msg["Subject"] = f"Odpowiedź: {email.subject}"
-        msg["From"] = credentials.login
-        msg["To"] = recipient
-        msg.set_content(reply_text)
-
-        print("[DEBUG] Próba połączenia z serwerem SMTP...")
-        with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
-            if credentials.use_tls:
-                print("[DEBUG] Uruchamiam STARTTLS...")
-                server.starttls()
-            decrypted_password = decrypt_password(credentials.encrypted_password)
-            print(f"[DEBUG] Zaszyfrowane hasło odszyfrowane.")
-            server.login(credentials.login, decrypted_password)
-            print("[DEBUG] Zalogowano do SMTP.")
-            server.send_message(msg)
-            print("[DEBUG] Wiadomość wysłana.")
-
-        email.is_archived = True
-        db.commit()
-        print("[DEBUG] Email oznaczony jako zarchiwizowany.")
-
-        return RedirectResponse(url="/", status_code=302)
-
-    except Exception as e:
-        print(f"[ERROR] Błąd: {e}")
-        raise HTTPException(status_code=500, detail=f"Błąd podczas wysyłania maila: {str(e)}")
-
-
-
-
-
-
-
-@app.get("/category/{category_name}", response_class=HTMLResponse)
-def read_emails_by_category(
-    category_name: str,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie)
-):
-    allowed_categories = ["faktura", "reklamacja", "oferta", "rezygnacja", "brak klasyfikacji"]
-    if category_name not in allowed_categories:
-        raise HTTPException(status_code=404, detail="Nieprawidłowa kategoria")
-
-    emails = db.query(Email).filter(
-        Email.classification == category_name,
-        Email.is_archived == False
-    ).order_by(Email.received_at.desc()).all()
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "active_category": category_name
-    })
-
-    
-@app.get("/archiwum", response_class=HTMLResponse)
-def archived_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = db.query(Email).filter(Email.is_archived == True).order_by(Email.received_at.desc()).all()
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "active_category": "archiwum"
-    })
-
-
+    email.is_archived = True
+    db.commit()
     return RedirectResponse(url="/", status_code=302)

@@ -98,6 +98,67 @@ def read_emails(request: Request, db: Session = Depends(get_db), current_user: U
         "user_visible_emails": visible_emails
     })
 
+from fastapi import Path
+
+@app.get("/category/{category_name}", response_class=HTMLResponse)
+def read_emails_by_category(
+    category_name: str = Path(..., description="Nazwa kategorii maila"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    # Wyciągamy tylko maile o danej klasyfikacji (category_name), które nie są zarchiwizowane
+    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+    if not visible_addresses:
+        emails = []
+    else:
+        emails = (
+            db.query(Email)
+            .filter(
+                Email.sent_to.in_(visible_addresses),
+                Email.classification == category_name,
+                Email.is_archived == False,
+            )
+            .order_by(Email.received_at.desc())
+            .all()
+        )
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": emails,
+        "user": current_user,
+        "user_visible_emails": visible_addresses,
+        "active_category": category_name
+    })
+
+@app.get("/archiwum", response_class=HTMLResponse)
+def read_archived_emails(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+    if not visible_addresses:
+        emails = []
+    else:
+        emails = (
+            db.query(Email)
+            .filter(
+                Email.sent_to.in_(visible_addresses),
+                Email.is_archived == True,
+            )
+            .order_by(Email.received_at.desc())
+            .all()
+        )
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": emails,
+        "user": current_user,
+        "user_visible_emails": visible_addresses,
+        "active_category": "archiwum"
+    })
+
 @app.post("/add_email_account", response_class=HTMLResponse)
 def add_email_account(
     request: Request,

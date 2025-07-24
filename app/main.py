@@ -69,7 +69,7 @@ def extract_email(full: str):
     return match.group(1) if match else full.strip()
 
 def get_emails_for_user(db: Session, user: User):
-    visible_addresses = [v.email_address for v in db.query(UserVisibleEmail).filter_by(user_id=user.id).all()]
+    visible_addresses = [cred.email for cred in user.selected_gmail_credentials]
     if not visible_addresses:
         return []
     return (
@@ -89,45 +89,13 @@ def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str 
 
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    visible_emails = [v.email_address for v in db.query(UserVisibleEmail).filter_by(user_id=current_user.id).all()]
     emails = get_emails_for_user(db, current_user)
+    visible_emails = [cred.email for cred in current_user.selected_gmail_credentials]
     return templates.TemplateResponse("index.html", {
         "request": request,
         "emails": emails,
         "user": current_user,
         "user_visible_emails": visible_emails
-    })
-
-@app.post("/set_visible_emails", response_class=HTMLResponse)
-def set_visible_emails(
-    request: Request,
-    visible_emails: Optional[List[str]] = Form(None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie),
-):
-    # Usuń stare visible emails użytkownika
-    db.query(UserVisibleEmail).filter(UserVisibleEmail.user_id == current_user.id).delete()
-    db.commit()
-
-    if visible_emails:
-        # Sprawdź które maile są w gmail_credentials, by zapobiec śmieciom
-        valid_emails = (
-            db.query(GmailCredentials.email)
-            .filter(GmailCredentials.email.in_(visible_emails))
-            .all()
-        )
-        valid_emails = [e[0] for e in valid_emails]
-        for email_address in valid_emails:
-            visible = UserVisibleEmail(user_id=current_user.id, email_address=email_address)
-            db.add(visible)
-        db.commit()
-
-    emails = get_emails_for_user(db, current_user)
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "user_visible_emails": visible_emails or []
     })
 
 @app.post("/add_email_account", response_class=HTMLResponse)
@@ -139,38 +107,34 @@ def add_email_account(
 ):
     email_address = email_address.strip().lower()
 
-    credential = db.query(GmailCredentials).filter(GmailCredentials.email == email_address).first()
+    credential = db.query(GmailCredentials).filter_by(email=email_address).first()
     if not credential:
         return templates.TemplateResponse("index.html", {
             "request": request,
             "emails": get_emails_for_user(db, current_user),
             "user": current_user,
-            "user_visible_emails": [v.email_address for v in db.query(UserVisibleEmail).filter_by(user_id=current_user.id).all()],
-            "add_email_error": f"Adres {email_address} nie jest dostępny w bazie danych (gmail_credentials)."
+            "user_visible_emails": [c.email for c in current_user.selected_gmail_credentials],
+            "add_email_error": f"Adres {email_address} nie istnieje w gmail_credentials."
         })
 
-    exists = db.query(UserVisibleEmail).filter_by(user_id=current_user.id, email_address=email_address).first()
-    if exists:
+    if credential in current_user.selected_gmail_credentials:
         return templates.TemplateResponse("index.html", {
             "request": request,
             "emails": get_emails_for_user(db, current_user),
             "user": current_user,
-            "user_visible_emails": [v.email_address for v in db.query(UserVisibleEmail).filter_by(user_id=current_user.id).all()],
-            "add_email_error": f"Adres {email_address} jest już na Twojej liście widocznych."
+            "user_visible_emails": [c.email for c in current_user.selected_gmail_credentials],
+            "add_email_error": f"Adres {email_address} już jest dodany."
         })
 
-    visible = UserVisibleEmail(user_id=current_user.id, email_address=email_address)
-    db.add(visible)
+    current_user.selected_gmail_credentials.append(credential)
     db.commit()
-
-    visible_emails = [v.email_address for v in db.query(UserVisibleEmail).filter_by(user_id=current_user.id).all()]
 
     return templates.TemplateResponse("index.html", {
         "request": request,
         "emails": get_emails_for_user(db, current_user),
         "user": current_user,
-        "user_visible_emails": visible_emails,
-        "add_email_message": f"Adres {email_address} został dodany do widocznych."
+        "user_visible_emails": [c.email for c in current_user.selected_gmail_credentials],
+        "add_email_message": f"Adres {email_address} został dodany."
     })
 
 @app.post("/webhook")
@@ -242,6 +206,37 @@ def login_post(request: Request, db: Session = Depends(get_db), email: str = For
         return templates.TemplateResponse("login.html", {"request": request, "error": "Nieprawidłowy email lub hasło"})
     response = RedirectResponse(url="/", status_code=302)
     response.set_cookie(key="user_email", value=user.login_app, httponly=True)
+    return response
+
+@app.get("/register", response_class=HTMLResponse)
+def register_get(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.post("/register", response_class=HTMLResponse)
+def register_post(
+    request: Request,
+    login_app: str = Form(...),
+    password: str = Form(...),
+):
+    db: Session = SessionLocal()
+    existing_user = db.query(User).filter_by(login_app=login_app).first()
+
+    if existing_user:
+        return templates.TemplateResponse(
+            "register.html",
+            {
+                "request": request,
+                "error": "Użytkownik o tym loginie już istnieje."
+            }
+        )
+
+    hashed_pw = pwd_context.hash(password)
+    new_user = User(login_app=login_app, hashed_password=hashed_pw)
+    db.add(new_user)
+    db.commit()
+    db.close()
+
+    response = RedirectResponse(url="/login", status_code=303)
     return response
 
 @app.get("/logout")

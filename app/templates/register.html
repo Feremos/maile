@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Rejestracja</title>
     <meta charset="UTF-8">
+    <title>Rejestracja</title>
 </head>
 <body>
-    <h2>Rejestracja</h2>
+    <h1>Rejestracja</h1>
     <form method="post">
-        <label>Email: <input type="email" name="email" required></label><br>
-        <label>Hasło: <input type="password" name="password" required></label><br>
+        <label for="login_app">Login:</label><br>
+        <input type="text" name="login_app" required><br><br>
+        <label for="password">Hasło:</label><br>
+        <input type="password" name="password" required><br><br>
         <button type="submit">Zarejestruj</button>
     </form>
-    <p>Masz już konto? <a href="/login">Zaloguj się</a></p>
     {% if error %}
-        <p style="color:red;">{{ error }}</p>
+        <p style="color: red;">{{ error }}</p>
     {% endif %}
 </body>
 </html>

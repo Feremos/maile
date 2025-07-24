@@ -10,7 +10,7 @@
             padding: 2rem;
             max-width: 800px;
             margin: auto;
-            background-color: #0a0a0a; /* niemal czerń */
+            background-color: #0a0a0a;
             color: #ddd;
         }
         h1, h2 {
@@ -127,23 +127,21 @@
 <p style="color: #34d399;">{{ add_email_message }}</p>
 {% endif %}
 
-
 <h2>📧 Wybierz maile do wyświetlania</h2>
 <form method="post" action="/set_visible_emails" class="email-selection">
-    {% for account in user.email_accounts %}
-        <label>
-            <input type="checkbox" name="visible_emails" value="{{ account.email_address }}"
-                {% if account.email_address in user_visible_emails %}checked{% endif %}>
-            {{ account.email_address }}
-        </label>
+    {% if user.email_accounts %}
+        {% for account in user.email_accounts %}
+            <label>
+                <input type="checkbox" name="visible_emails" value="{{ account.email_address }}"
+                    {% if account.email_address in user_visible_emails %}checked{% endif %}>
+                {{ account.email_address }}
+            </label>
+        {% endfor %}
+        <button type="submit">Zapisz wybrane maile</button>
     {% else %}
         <p>Nie masz dodanych żadnych kont e-mail.</p>
-    {% endfor %}
-    {% if user.email_accounts %}
-        <button type="submit">Zapisz wybrane maile</button>
     {% endif %}
 </form>
-
 
 <div class="tabs">
     <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>

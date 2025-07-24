@@ -1,4 +1,3 @@
-# models.py
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Table, create_engine
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
@@ -10,12 +9,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
 
-# Relacja User <-> EmailAccount
-user_email_accounts = Table(
-    "user_email_accounts",
+# Tabela łącząca użytkownika z wybranymi mailami (gmail_credentials)
+user_selected_emails = Table(
+    "user_selected_emails",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id")),
-    Column("email_account_id", Integer, ForeignKey("email_accounts.id"))
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("gmail_credential_id", Integer, ForeignKey("gmail_credentials.id"), primary_key=True),
 )
 
 class User(Base):
@@ -24,8 +23,12 @@ class User(Base):
     login_app = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-    email_accounts = relationship("EmailAccount", secondary=user_email_accounts, back_populates="users")
-    visible_emails = relationship("UserVisibleEmail", back_populates="user", cascade="all, delete-orphan")
+    # relacja do wybranych gmail_credentials
+    selected_gmail_credentials = relationship(
+        "GmailCredentials",
+        secondary=user_selected_emails,
+        back_populates="users_selected_by"
+    )
 
 class GmailCredentials(Base):
     __tablename__ = "gmail_credentials"
@@ -36,6 +39,12 @@ class GmailCredentials(Base):
     smtp_server = Column(String, nullable=False)
     smtp_port = Column(Integer, nullable=False)
     use_tls = Column(Boolean, default=True)
+
+    users_selected_by = relationship(
+        "User",
+        secondary=user_selected_emails,
+        back_populates="selected_gmail_credentials"
+    )
 
 class Email(Base):
     __tablename__ = "emails"
@@ -52,24 +61,5 @@ class Email(Base):
     thread_id = Column(String)
     received_from = Column(String)
     is_archived = Column(Boolean, default=False)
-
-class EmailAccount(Base):
-    __tablename__ = "email_accounts"
-    id = Column(Integer, primary_key=True)
-    email_address = Column(String, unique=True, nullable=False)
-    provider = Column(String, nullable=False)
-    credentials_id = Column(Integer, ForeignKey("gmail_credentials.id"))
-    active = Column(Boolean, default=True)
-
-    credentials = relationship("GmailCredentials")
-    users = relationship("User", secondary=user_email_accounts, back_populates="email_accounts")
-
-class UserVisibleEmail(Base):
-    __tablename__ = "user_visible_emails"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    email = Column(String, nullable=False)
-
-    user = relationship("User", back_populates="visible_emails")
 
 Base.metadata.create_all(bind=engine)

@@ -16,7 +16,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
 from .db import SessionLocal, engine
-from .models import Base, User, Email, GmailCredentials, UserVisibleEmail
+from .models import Base, User, Email, GmailCredentials
 
 load_dotenv()
 

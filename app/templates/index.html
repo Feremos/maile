@@ -13,7 +13,7 @@
             background-color: #0a0a0a; /* niemal czerń */
             color: #ddd;
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             border-bottom: 2px solid #005f99;
             padding-bottom: 0.5rem;
@@ -93,9 +93,26 @@
         small {
             color: #999;
         }
+        .email-selection {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #111827;
+            border-radius: 10px;
+            border: 1px solid #005f99;
+        }
+        .email-selection label {
+            display: block;
+            margin-bottom: 0.3rem;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        .email-selection button {
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
+
 <h2>➕ Dodaj konto e-mail</h2>
 <form method="post" action="/add_email_account">
     <label for="email_address">Adres e-mail:</label><br>
@@ -110,52 +127,73 @@
 <p style="color: #34d399;">{{ add_email_message }}</p>
 {% endif %}
 
-    <div class="tabs">
-        <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
-        <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
-        <a href="/category/reklamacja" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
-        <a href="/category/oferta" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
-        <a href="/category/rezygnacja" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
-        <a href="/category/brak%20klasyfikacji" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
-        <a href="/archiwum" class="{% if active_category == 'archiwum' %}active{% endif %}">📦 Archiwum</a>
-    </div>
 
-    {% if error %}
-        <p style="color: #f87171; text-align: center;">{{ error }}</p>
-    {% endif %}
-    {% if message %}
-        <p style="color: #34d399; text-align: center;">{{ message }}</p>
-    {% endif %}
-
-    <h1>📬 Maile użytkowników</h1>
-    {% for email in emails %}
-    <div class="email">
-        <p><strong>📧 Od:</strong> {{ email.sent_from }}</p>
-        <p><strong>📧 Do:</strong> {{ email.sent_to }}</p>
-        <p><strong>✉️ Temat:</strong> {{ email.subject }}</p>
-        <p><strong>📝 Treść:</strong> {{ email.content }}</p>
-        <p class="classification">🏷️ {{ email.classification }}</p>
-
-        {% if email.summary %}
-        <p><strong>📄 Streszczenie:</strong> {{ email.summary }}</p>
-        {% endif %}
-
-        <small>
-            Odebrano:
-            {% if email.received_at %}
-                {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
-            {% else %}
-                brak daty
-            {% endif %}
-        </small>
-
-        <form method="post" action="/reply">
-            <input type="hidden" name="email_id" value="{{ email.id }}">
-            <label for="reply_{{ email.id }}">✏️ Odpowiedź:</label><br>
-            <textarea name="reply_text" id="reply_{{ email.id }}">{{ email.suggested_reply }}</textarea><br>
-            <button type="submit">📤 Wyślij odpowiedź</button>
-        </form>
-    </div>
+<h2>📧 Wybierz maile do wyświetlania</h2>
+<form method="post" action="/set_visible_emails" class="email-selection">
+    {% for account in user.email_accounts %}
+        <label>
+            <input type="checkbox" name="visible_emails" value="{{ account.email_address }}"
+                {% if account.email_address in user_visible_emails %}checked{% endif %}>
+            {{ account.email_address }}
+        </label>
+    {% else %}
+        <p>Nie masz dodanych żadnych kont e-mail.</p>
     {% endfor %}
+    {% if user.email_accounts %}
+        <button type="submit">Zapisz wybrane maile</button>
+    {% endif %}
+</form>
+
+
+<div class="tabs">
+    <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
+    <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
+    <a href="/category/reklamacja" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
+    <a href="/category/oferta" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
+    <a href="/category/rezygnacja" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
+    <a href="/category/brak%20klasyfikacji" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
+    <a href="/archiwum" class="{% if active_category == 'archiwum' %}active{% endif %}">📦 Archiwum</a>
+</div>
+
+{% if error %}
+    <p style="color: #f87171; text-align: center;">{{ error }}</p>
+{% endif %}
+{% if message %}
+    <p style="color: #34d399; text-align: center;">{{ message }}</p>
+{% endif %}
+
+<h1>📬 Maile użytkowników</h1>
+{% for email in emails %}
+<div class="email">
+    <p><strong>📧 Od:</strong> {{ email.sent_from }}</p>
+    <p><strong>📧 Do:</strong> {{ email.sent_to }}</p>
+    <p><strong>✉️ Temat:</strong> {{ email.subject }}</p>
+    <p><strong>📝 Treść:</strong> {{ email.content }}</p>
+    <p class="classification">🏷️ {{ email.classification }}</p>
+
+    {% if email.summary %}
+    <p><strong>📄 Streszczenie:</strong> {{ email.summary }}</p>
+    {% endif %}
+
+    <small>
+        Odebrano:
+        {% if email.received_at %}
+            {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
+        {% else %}
+            brak daty
+        {% endif %}
+    </small>
+
+    <form method="post" action="/reply">
+        <input type="hidden" name="email_id" value="{{ email.id }}">
+        <label for="reply_{{ email.id }}">✏️ Odpowiedź:</label><br>
+        <textarea name="reply_text" id="reply_{{ email.id }}">{{ email.suggested_reply }}</textarea><br>
+        <button type="submit">📤 Wyślij odpowiedź</button>
+    </form>
+</div>
+{% else %}
+<p>Brak wiadomości do wyświetlenia.</p>
+{% endfor %}
+
 </body>
 </html>

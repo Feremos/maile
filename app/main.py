@@ -15,10 +15,8 @@ from cryptography.fernet import Fernet
 from pydantic import BaseModel, EmailStr
 
 from .db import SessionLocal, engine
-from .models import Base, User, Email, GmailCredentials, EmailAccount
+from .models import Base, User, Email, GmailCredentials, EmailAccount, UserVisibleEmail
 
-
-# --- Inicjalizacja ---
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -35,8 +33,6 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-
-# --- Schematy ---
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -45,8 +41,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-
-# --- Pomocnicze funkcje ---
 def get_db():
     db = SessionLocal()
     try:
@@ -65,25 +59,22 @@ def create_access_token(data: dict, expires_delta: datetime.timedelta = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
 
-def get_user(db, email: str): return db.query(User).filter(User.login_app == email).first()
+def get_user(db, email: str):
+    return db.query(User).filter(User.login_app == email).first()
 
 def get_emails_for_user(db: Session, user: User):
-    # Pobierz gmail credential dla usera
-    credentials = db.query(GmailCredentials).filter(GmailCredentials.login == user.login_app).first()
-    if not credentials:
+    visible_addresses = [v.email_address for v in user.visible_emails]
+    if not visible_addresses:
         return []
-
     return (
         db.query(Email)
         .filter(
-            Email.sent_to == credentials.login,
+            Email.sent_to.in_(visible_addresses),
             Email.is_archived == False
         )
         .order_by(Email.received_at.desc())
         .all()
     )
-
-
 
 def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
     if not user_email:
@@ -97,8 +88,6 @@ def extract_email(full: str):
     match = re.search(r'<([^>]+)>', full)
     return match.group(1) if match else full.strip()
 
-
-# --- Startowe tworzenie użytkowników ---
 @app.on_event("startup")
 def create_predefined_users():
     db = SessionLocal()
@@ -118,41 +107,95 @@ def create_predefined_users():
     finally:
         db.close()
 
-
-# --- Widoki ---
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
     emails = get_emails_for_user(db, current_user)
     return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
 
+@app.post("/add_visible_email", response_class=HTMLResponse)
+def add_visible_email(
+    request: Request,
+    email_address: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie),
+):
+    email_address = email_address.strip().lower()
+    exists = db.query(UserVisibleEmail).filter_by(user_id=current_user.id, email_address=email_address).first()
+    if exists:
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "emails": get_emails_for_user(db, current_user),
+            "user": current_user,
+            "add_email_error": f"Adres {email_address} jest już na Twojej liście widocznych."
+        })
+    visible = UserVisibleEmail(user_id=current_user.id, email_address=email_address)
+    db.add(visible)
+    db.commit()
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": get_emails_for_user(db, current_user),
+        "user": current_user,
+        "add_email_message": f"Adres {email_address} został dodany do widocznych."
+    })
 
+@app.post("/webhook")
+async def receive_email(
+    user_email: str = Form(...),
+    subject: str = Form(...),
+    content: str = Form(...),
+    classification: str = Form(...),
+    suggested_reply: str = Form(...),
+    summary: str = Form(None),
+    mail_id: str = Form(None),
+    thread_id: str = Form(None),
+    received_from: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    credential = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(user_email)).first()
+    if not credential:
+        raise HTTPException(status_code=400, detail="Nie znaleziono danych konta Gmail dla tego adresu")
+    email = Email(
+        sent_to=user_email.lower(),
+        sent_from=received_from,
+        subject=subject,
+        content=content,
+        classification=classification,
+        suggested_reply=suggested_reply,
+        summary=summary,
+        mail_id=mail_id,
+        thread_id=thread_id,
+        received_from=received_from,
+    )
+    db.add(email)
+    db.commit()
+    db.refresh(email)
+    return {"status": "ok", "id": email.id}
 
-@app.get("/archiwum", response_class=HTMLResponse)
-def archived_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = db.query(Email).join(Email.account).join(EmailAccount.users).filter(
-        User.id == current_user.id,
-        Email.is_archived == True
-    ).order_by(Email.received_at.desc()).all()
+@app.post("/reply")
+def send_reply(email_id: int = Form(...), reply_text: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
+    email = db.query(Email).filter(Email.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
+    sent_to_clean = email.sent_to.strip().lower()
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(sent_to_clean)).first()
+    if not credentials:
+        raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego konta")
+    recipient = extract_email(email.sent_from)
+    msg = EmailMessage()
+    msg["Subject"] = f"Odpowiedź: {email.subject}"
+    msg["From"] = credentials.login
+    msg["To"] = recipient
+    msg.set_content(reply_text)
+    with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
+        if credentials.use_tls:
+            server.starttls()
+        decrypted_password = decrypt_password(credentials.encrypted_password)
+        server.login(credentials.login, decrypted_password)
+        server.send_message(msg)
+    email.is_archived = True
+    db.commit()
+    return RedirectResponse(url="/", status_code=302)
 
-    return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user, "active_category": "archiwum"})
-
-
-@app.get("/category/{category_name}", response_class=HTMLResponse)
-def read_emails_by_category(category_name: str, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    allowed = ["faktura", "reklamacja", "oferta", "rezygnacja", "brak klasyfikacji"]
-    if category_name not in allowed:
-        raise HTTPException(status_code=404, detail="Nieprawidłowa kategoria")
-
-    emails = db.query(Email).join(Email.account).join(EmailAccount.users).filter(
-        User.id == current_user.id,
-        Email.classification == category_name,
-        Email.is_archived == False
-    ).order_by(Email.received_at.desc()).all()
-
-    return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user, "active_category": category_name})
-
-
-# --- Logowanie ---
 @app.get("/login", response_class=HTMLResponse)
 def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -171,156 +214,3 @@ def logout():
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("user_email")
     return response
-
-
-# --- Webhook do odbioru maili ---
-@app.post("/webhook")
-async def receive_email(
-    user_email: str = Form(...),
-    subject: str = Form(...),
-    content: str = Form(...),
-    classification: str = Form(...),
-    suggested_reply: str = Form(...),
-    summary: str = Form(None),
-    mail_id: str = Form(None),
-    thread_id: str = Form(None),
-    received_from: str = Form(None),
-    db: Session = Depends(get_db),
-):
-    # Sprawdź, czy istnieje gmail credential dla user_email (czyli dla tego maila)
-    credential = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(user_email)).first()
-    if not credential:
-        raise HTTPException(status_code=400, detail="Nie znaleziono danych konta Gmail dla tego adresu")
-
-    email = Email(
-        sent_to=user_email.lower(),
-        sent_from=received_from,
-        subject=subject,
-        content=content,
-        classification=classification,
-        suggested_reply=suggested_reply,
-        summary=summary,
-        mail_id=mail_id,
-        thread_id=thread_id,
-        received_from=received_from,
-    )
-    db.add(email)
-    db.commit()
-    db.refresh(email)
-    return {"status": "ok", "id": email.id}
-
-
-
-# --- Wysyłanie odpowiedzi ---
-@app.post("/reply")
-def send_reply(email_id: int = Form(...), reply_text: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    email = db.query(Email).filter(Email.id == email_id).first()
-    if not email:
-        raise HTTPException(status_code=404, detail="Email nie znaleziony")
-
-    sent_to_clean = email.sent_to.strip().lower()
-    credentials = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(sent_to_clean)).first()
-    if not credentials:
-        raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego konta")
-
-    recipient = extract_email(email.sent_from)
-
-    msg = EmailMessage()
-    msg["Subject"] = f"Odpowiedź: {email.subject}"
-    msg["From"] = credentials.login
-    msg["To"] = recipient
-    msg.set_content(reply_text)
-
-    with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
-        if credentials.use_tls:
-            server.starttls()
-        decrypted_password = decrypt_password(credentials.encrypted_password)
-        server.login(credentials.login, decrypted_password)
-        server.send_message(msg)
-
-    email.is_archived = True
-    db.commit()
-    return RedirectResponse(url="/", status_code=302)
-
-
-@app.post("/add_email_account", response_class=HTMLResponse)
-def add_email_account(
-    request: Request,
-    email_address: str = Form(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie),
-):
-    email_address = email_address.lower().strip()
-    
-    # Sprawdź, czy konto już istnieje
-    account = db.query(EmailAccount).filter(EmailAccount.email_address == email_address).first()
-    
-    if not account:
-        # Jeśli konto nie istnieje, utwórz nowe (provider możesz ustawić na 'gmail' domyślnie, albo zostawić puste)
-        account = EmailAccount(email_address=email_address, provider="gmail", active=True)
-        db.add(account)
-        db.commit()
-        db.refresh(account)
-    
-    # Sprawdź, czy konto już jest przypisane do użytkownika
-    if account in current_user.email_accounts:
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "emails": get_emails_for_user(db, current_user),
-            "user": current_user,
-            "add_email_error": f"Konto {email_address} jest już przypisane do Twojego konta."
-        })
-    
-    # Przypisz konto do użytkownika
-    current_user.email_accounts.append(account)
-    db.commit()
-    
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": get_emails_for_user(db, current_user),
-        "user": current_user,
-        "add_email_message": f"Konto {email_address} zostało dodane."
-    })
-    
-    
-@app.post("/add_gmail_credentials", response_class=HTMLResponse)
-def add_gmail_credentials(
-    request: Request,
-    email: EmailStr = Form(...),
-    password: str = Form(...),
-    smtp_server: str = Form("smtp.gmail.com"),
-    smtp_port: int = Form(587),
-    use_tls: bool = Form(True),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie),
-):
-    email = email.lower().strip()
-    encrypted_password = encrypt_password(password)
-
-    existing = db.query(GmailCredentials).filter(GmailCredentials.login == email).first()
-    if existing:
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "emails": get_emails_for_user(db, current_user),
-            "user": current_user,
-            "add_email_error": f"Konto {email} już istnieje."
-        })
-
-    creds = GmailCredentials(
-        login=email,
-        encrypted_password=encrypted_password,
-        smtp_server=smtp_server,
-        smtp_port=smtp_port,
-        use_tls=use_tls,
-        user_id=current_user.id,
-    )
-    db.add(creds)
-    db.commit()
-    db.refresh(creds)
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": get_emails_for_user(db, current_user),
-        "user": current_user,
-        "add_email_message": f"Konto {email} zostało dodane."
-    })

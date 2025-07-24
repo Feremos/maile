@@ -68,14 +68,21 @@ def create_access_token(data: dict, expires_delta: datetime.timedelta = None):
 def get_user(db, email: str): return db.query(User).filter(User.login_app == email).first()
 
 def get_emails_for_user(db: Session, user: User):
+    # Pobierz gmail credential dla usera
+    credentials = db.query(GmailCredentials).filter(GmailCredentials.login == user.login_app).first()
+    if not credentials:
+        return []
+
     return (
         db.query(Email)
-        .join(Email.account)
-        .join(EmailAccount.users)
-        .filter(User.id == user.id, Email.is_archived == False)
+        .filter(
+            Email.sent_to == credentials.login,
+            Email.is_archived == False
+        )
         .order_by(Email.received_at.desc())
         .all()
     )
+
 
 
 def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
@@ -117,6 +124,7 @@ def create_predefined_users():
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
     emails = get_emails_for_user(db, current_user)
     return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
+
 
 
 @app.get("/archiwum", response_class=HTMLResponse)
@@ -179,12 +187,14 @@ async def receive_email(
     received_from: str = Form(None),
     db: Session = Depends(get_db),
 ):
-    account = db.query(EmailAccount).filter(EmailAccount.email_address.ilike(user_email)).first()
-    if not account:
-        raise HTTPException(status_code=400, detail="Nie znaleziono konta e-mail")
+    # Sprawdź, czy istnieje gmail credential dla user_email (czyli dla tego maila)
+    credential = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(user_email)).first()
+    if not credential:
+        raise HTTPException(status_code=400, detail="Nie znaleziono danych konta Gmail dla tego adresu")
 
     email = Email(
-        email_account_id=account.id,
+        sent_to=user_email.lower(),
+        sent_from=received_from,
         subject=subject,
         content=content,
         classification=classification,
@@ -193,13 +203,12 @@ async def receive_email(
         mail_id=mail_id,
         thread_id=thread_id,
         received_from=received_from,
-        sent_to=user_email,
-        sent_from=received_from
     )
     db.add(email)
     db.commit()
     db.refresh(email)
     return {"status": "ok", "id": email.id}
+
 
 
 # --- Wysyłanie odpowiedzi ---
@@ -212,7 +221,7 @@ def send_reply(email_id: int = Form(...), reply_text: str = Form(...), db: Sessi
     sent_to_clean = email.sent_to.strip().lower()
     credentials = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(sent_to_clean)).first()
     if not credentials:
-        raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego nadawcy")
+        raise HTTPException(status_code=500, detail="Brak danych SMTP dla tego konta")
 
     recipient = extract_email(email.sent_from)
 
@@ -232,6 +241,7 @@ def send_reply(email_id: int = Form(...), reply_text: str = Form(...), db: Sessi
     email.is_archived = True
     db.commit()
     return RedirectResponse(url="/", status_code=302)
+
 
 @app.post("/add_email_account", response_class=HTMLResponse)
 def add_email_account(
@@ -270,4 +280,47 @@ def add_email_account(
         "emails": get_emails_for_user(db, current_user),
         "user": current_user,
         "add_email_message": f"Konto {email_address} zostało dodane."
+    })
+    
+    
+@app.post("/add_gmail_credentials", response_class=HTMLResponse)
+def add_gmail_credentials(
+    request: Request,
+    email: EmailStr = Form(...),
+    password: str = Form(...),
+    smtp_server: str = Form("smtp.gmail.com"),
+    smtp_port: int = Form(587),
+    use_tls: bool = Form(True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie),
+):
+    email = email.lower().strip()
+    encrypted_password = encrypt_password(password)
+
+    existing = db.query(GmailCredentials).filter(GmailCredentials.login == email).first()
+    if existing:
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "emails": get_emails_for_user(db, current_user),
+            "user": current_user,
+            "add_email_error": f"Konto {email} już istnieje."
+        })
+
+    creds = GmailCredentials(
+        login=email,
+        encrypted_password=encrypted_password,
+        smtp_server=smtp_server,
+        smtp_port=smtp_port,
+        use_tls=use_tls,
+        user_id=current_user.id,
+    )
+    db.add(creds)
+    db.commit()
+    db.refresh(creds)
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": get_emails_for_user(db, current_user),
+        "user": current_user,
+        "add_email_message": f"Konto {email} zostało dodane."
     })

@@ -41,21 +41,19 @@ class GmailCredentials(Base):
 class Email(Base):
     __tablename__ = "emails"
     id = Column(Integer, primary_key=True, index=True)
-    email_account_id = Column(Integer, ForeignKey("email_accounts.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
+    # Usuń email_account_id i user_id
     sent_from = Column(String, index=True)
-    sent_to = Column(String)
+    sent_to = Column(String, index=True)  # Dodaj indeks, bo będziemy po nim filtrować
     subject = Column(String)
     content = Column(String)
     summary = Column(String)
     classification = Column(String)
     suggested_reply = Column(String)
     received_at = Column(DateTime, default=datetime.utcnow)
-    mail_id = Column(String)       # ID wiadomości (np. Gmail Message-ID)
-    thread_id = Column(String)     # ID wątku (np. Gmail Thread-ID)
-    received_from = Column(String) # np. nazwa nadawcy (From)
+    mail_id = Column(String)
+    thread_id = Column(String)
+    received_from = Column(String)
     is_archived = Column(Boolean, default=False)
-    account = relationship("EmailAccount", back_populates="emails")
     
 class EmailAccount(Base):
     __tablename__ = "email_accounts"

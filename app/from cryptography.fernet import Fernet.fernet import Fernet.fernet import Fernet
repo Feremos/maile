@@ -1,0 +1,15 @@
+from cryptography.fernet import Fernet
+
+# Wstaw swój klucz FERNET_KEY (ten sam, którego używasz w aplikacji)
+FERNET_KEY = "4LD8LmzX1tmaRS1YYt-iSMI0yoFjNp8AZcI7BgEVZWk="
+
+fernet = Fernet(FERNET_KEY.encode())
+
+# Hasło, które chcesz zaszyfrować
+plain_password = "crxh xdwb iuni pios"
+
+# Szyfrowanie
+encrypted_password = fernet.encrypt(plain_password.encode()).decode()
+
+print("Zaszyfrowane hasło:")
+print(encrypted_password)

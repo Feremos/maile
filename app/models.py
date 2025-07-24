@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
-
+#
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
@@ -17,7 +17,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
 
 class GmailCredentials(Base):
-    __tablename__ = "mail_credentials"
+    __tablename__ = "gmail_credentials"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, nullable=False)
     login = Column(String, nullable=False)

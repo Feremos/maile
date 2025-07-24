@@ -15,7 +15,8 @@ from cryptography.fernet import Fernet
 from pydantic import BaseModel, EmailStr
 
 from .db import SessionLocal, engine
-from .models import Base, User, Email, GmailCredentials, EmailAccount, user_email_accounts
+from .models import Base, User, Email, GmailCredentials, EmailAccount
+
 
 # --- Inicjalizacja ---
 load_dotenv()

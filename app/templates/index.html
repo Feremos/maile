@@ -96,6 +96,20 @@
     </style>
 </head>
 <body>
+<h2>➕ Dodaj konto e-mail</h2>
+<form method="post" action="/add_email_account">
+    <label for="email_address">Adres e-mail:</label><br>
+    <input type="email" id="email_address" name="email_address" required><br><br>
+    <button type="submit">Dodaj konto</button>
+</form>
+
+{% if add_email_error %}
+<p style="color: #f87171;">{{ add_email_error }}</p>
+{% endif %}
+{% if add_email_message %}
+<p style="color: #34d399;">{{ add_email_message }}</p>
+{% endif %}
+
     <div class="tabs">
         <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
         <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>

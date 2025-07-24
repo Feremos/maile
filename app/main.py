@@ -67,6 +67,17 @@ def create_access_token(data: dict, expires_delta: datetime.timedelta = None):
 
 def get_user(db, email: str): return db.query(User).filter(User.login_app == email).first()
 
+def get_emails_for_user(db: Session, user: User):
+    return (
+        db.query(Email)
+        .join(Email.account)
+        .join(EmailAccount.users)
+        .filter(User.id == user.id, Email.is_archived == False)
+        .order_by(Email.received_at.desc())
+        .all()
+    )
+
+
 def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
     if not user_email:
         raise HTTPException(status_code=401, detail="Nie jesteś zalogowany")
@@ -104,12 +115,9 @@ def create_predefined_users():
 # --- Widoki ---
 @app.get("/", response_class=HTMLResponse)
 def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = db.query(Email).join(Email.account).join(EmailAccount.users).filter(
-        User.id == current_user.id,
-        Email.is_archived == False
-    ).order_by(Email.received_at.desc()).all()
-
+    emails = get_emails_for_user(db, current_user)
     return templates.TemplateResponse("index.html", {"request": request, "emails": emails, "user": current_user})
+
 
 @app.get("/archiwum", response_class=HTMLResponse)
 def archived_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
@@ -224,3 +232,42 @@ def send_reply(email_id: int = Form(...), reply_text: str = Form(...), db: Sessi
     email.is_archived = True
     db.commit()
     return RedirectResponse(url="/", status_code=302)
+
+@app.post("/add_email_account", response_class=HTMLResponse)
+def add_email_account(
+    request: Request,
+    email_address: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie),
+):
+    email_address = email_address.lower().strip()
+    
+    # Sprawdź, czy konto już istnieje
+    account = db.query(EmailAccount).filter(EmailAccount.email_address == email_address).first()
+    
+    if not account:
+        # Jeśli konto nie istnieje, utwórz nowe (provider możesz ustawić na 'gmail' domyślnie, albo zostawić puste)
+        account = EmailAccount(email_address=email_address, provider="gmail", active=True)
+        db.add(account)
+        db.commit()
+        db.refresh(account)
+    
+    # Sprawdź, czy konto już jest przypisane do użytkownika
+    if account in current_user.email_accounts:
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "emails": get_emails_for_user(db, current_user),
+            "user": current_user,
+            "add_email_error": f"Konto {email_address} jest już przypisane do Twojego konta."
+        })
+    
+    # Przypisz konto do użytkownika
+    current_user.email_accounts.append(account)
+    db.commit()
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": get_emails_for_user(db, current_user),
+        "user": current_user,
+        "add_email_message": f"Konto {email_address} zostało dodane."
+    })

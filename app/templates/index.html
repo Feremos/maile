@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>System Maili Użytkowników</title>
-  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css" />
+  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
   <style>
     * {
       margin: 0;
@@ -169,7 +169,7 @@
       flex-wrap: wrap;
       justify-content: center;
       gap: 0.5rem;
-      margin: 1rem 0 2rem 0;
+      margin: 2rem 0;
       padding: 1rem;
       background: rgba(22, 27, 34, 0.6);
       border-radius: 12px;
@@ -177,7 +177,7 @@
     }
 
     .tab-link {
-      padding: 0.5rem 1rem;
+      padding: 0.75rem 1.25rem;
       background-color: rgba(13, 17, 23, 0.8);
       color: #c9d1d9;
       border-radius: 8px;
@@ -188,15 +188,6 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      font-size: 0.95rem;
-      white-space: nowrap;
-    }
-
-    .tab-link svg {
-      width: 18px;
-      height: 18px;
-      fill: #58a6ff;
-      flex-shrink: 0;
     }
 
     .tab-link.active,
@@ -221,7 +212,6 @@
       overflow: hidden;
       transition: all 0.3s ease;
       backdrop-filter: blur(10px);
-      animation: fadeIn 0.5s ease-out;
     }
 
     .email-card:hover {
@@ -365,176 +355,226 @@
       justify-content: center;
       gap: 2rem;
       margin: 2rem 0;
-      padding: 1rem 0;
-      border-top: 1px solid #30363d;
-      border-bottom: 1px solid #30363d;
-      color: #8b949e;
-      font-size: 0.95rem;
-    }
-
-    .stats-bar span {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-
-    .stats-bar svg {
-      width: 16px;
-      height: 16px;
-      fill: #8b949e;
-    }
-
-    /* Email tabs styling */
-    .email-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      justify-content: center;
-      margin-top: 1rem;
-    }
-
-    .email-tab-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.5rem 1rem;
-      background-color: rgba(13, 17, 23, 0.8);
-      color: #c9d1d9;
+      padding: 1rem;
+      background: rgba(22, 27, 34, 0.6);
       border-radius: 8px;
-      text-decoration: none;
-      font-weight: 500;
-      border: 1px solid transparent;
-      transition: all 0.3s ease;
-      font-size: 0.9rem;
+      flex-wrap: wrap;
     }
 
-    .email-tab-link svg {
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #58a6ff;
       display: block;
-      width: 18px;
-      height: 18px;
-      fill: #58a6ff;
-      flex-shrink: 0;
     }
 
-    .email-tab-link.active,
-    .email-tab-link:hover {
-      background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
-      color: #ffffff;
-      font-weight: 600;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(31, 111, 235, 0.3);
-      border-color: #58a6ff;
+    .stat-label {
+      font-size: 0.9rem;
+      color: #8b949e;
     }
 
+    /* Animacje */
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .email-card {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0d1117;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #58a6ff;
     }
   </style>
 </head>
 <body>
-  <header class="header">
+  <div class="header">
     <div class="header-content">
-      <h1>System Maili Użytkowników</h1>
+      <h1>📬 System Maili Użytkowników</h1>
     </div>
-  </header>
+  </div>
 
-  <main class="container">
-    <section class="controls-section">
+  <div class="container">
+    <div class="controls-section">
       <div class="controls-grid">
         <div class="control-group">
-          <h3>📂 Wybierz kategorię</h3>
-          <div class="tabs">
-            <a href="/?selected_category=" class="tab-link {% if not selected_category %}active{% endif %}" title="Wszystkie kategorie">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-              Wszystkie
-            </a>
-            {% for cat in categories %}
-              <a href="/?selected_category={{ cat | urlencode }}" class="tab-link {% if cat == selected_category %}active{% endif %}" title="{{ cat }}">
-                <!-- Ikona emoji dla kategorii (przykład) -->
-                <span>{{ category_icons.get(cat, "📁") }}</span> {{ cat }}
-              </a>
-            {% endfor %}
-          </div>
+          <h3>➕ Dodaj nowe konto e-mail</h3>
+          <form method="post" action="/add_email_account">
+            <div class="form-group">
+              <label for="email_address">Adres e-mail:</label>
+              <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
+            </div>
+            <button type="submit" class="btn">➕ Dodaj konto</button>
+          </form>
         </div>
 
         <div class="control-group">
           <h3>🔍 Filtruj wiadomości</h3>
-          <!-- Zakładki wyboru adresu email -->
-          <div class="email-tabs">
-            <a href="/" class="email-tab-link {% if not selected_email %}active{% endif %}" title="Wszystkie maile">
-              <!-- Ikona koperty -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 4h20v16H2z" fill="none"/><path d="M22 6l-10 7L2 6V6h20zM2 18h20v-2l-10-7-10 7v2z"/></svg>
-              Wszystkie
-            </a>
-            {% for email in user_visible_emails %}
-              <a href="/?selected_email={{ email | urlencode }}" class="email-tab-link {% if email == selected_email %}active{% endif %}" title="{{ email }}">
-                <!-- Ikona maila (koperta) -->
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm0 2l-8 5-8-5h16z"/></svg>
-                {{ email }}
-              </a>
-            {% endfor %}
-          </div>
-
-          {% if selected_email %}
-            <div class="selected-email-info">
-              <strong>📧 Aktywny filtr:</strong> {{ selected_email }}
+          <form method="get" action="/">
+            <div class="form-group">
+              <label for="selected_email">Wybierz adres e-mail:</label>
+              <select name="selected_email" onchange="this.form.submit()">
+                <option value="">-- Wszystkie adresy --</option>
+                {% for email in user_visible_emails %}
+                  <option value="{{ email }}" {% if email == selected_email %}selected{% endif %}>{{ email }}</option>
+                {% endfor %}
+              </select>
             </div>
+          </form>
+          
+          {% if selected_email %}
+          <div class="selected-email-info">
+            <strong>📧 Aktywny filtr:</strong> {{ selected_email }}
+          </div>
           {% endif %}
         </div>
       </div>
 
-      <form method="post" action="/send_mail" class="control-group">
-        <h3>✉️ Wyślij wiadomość</h3>
-        <div class="form-group">
-          <label for="recipient_email">Adres e-mail odbiorcy:</label>
-          <input id="recipient_email" name="recipient_email" type="email" placeholder="wpisz adres e-mail" required />
-        </div>
-        <div class="form-group">
-          <label for="message_content">Treść wiadomości:</label>
-          <textarea id="message_content" name="message_content" rows="5" placeholder="Napisz wiadomość..." required></textarea>
-        </div>
-        <button type="submit" class="btn">Wyślij wiadomość</button>
-      </form>
-    </section>
-
-    <section class="emails-section">
-      {% if emails|length == 0 %}
-        <div class="no-emails">Brak wiadomości do wyświetlenia.</div>
-      {% else %}
-        {% for email_obj in emails %}
-          <article class="email-card">
-            <header class="email-header">
-              <div class="email-meta">
-                <div class="email-meta-item">
-                  <span class="email-meta-label">Od:</span> {{ email_obj.sender }}
-                </div>
-                <div class="email-meta-item">
-                  <span class="email-meta-label">Do:</span> {{ email_obj.recipient }}
-                </div>
-              </div>
-              <div class="email-subject">{{ email_obj.subject }}</div>
-              {% if email_obj.classification %}
-                <div class="classification-badge">{{ email_obj.classification }}</div>
-              {% endif %}
-            </header>
-            <section class="email-body">
-              <div class="email-content">{{ email_obj.body | safe }}</div>
-              {% if email_obj.summary %}
-                <div class="email-summary">{{ email_obj.summary }}</div>
-              {% endif %}
-              <div class="email-date">{{ email_obj.date }}</div>
-            </section>
-          </article>
-        {% endfor %}
+      {% if add_email_error %}
+        <div class="message error">❌ {{ add_email_error }}</div>
       {% endif %}
-    </section>
-  </main>
+      {% if add_email_message %}
+        <div class="message success">✅ {{ add_email_message }}</div>
+      {% endif %}
+    </div>
+
+    <div class="tabs">
+      <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if not active_category %}active{% endif %}">
+        📥 Wszystkie
+      </a>
+      <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if active_category == 'faktura' %}active{% endif %}">
+        🧾 Faktury
+      </a>
+      <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if active_category == 'reklamacja' %}active{% endif %}">
+        ⚠️ Reklamacje
+      </a>
+      <a href="/category/oferta{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if active_category == 'oferta' %}active{% endif %}">
+        💼 Oferty
+      </a>
+      <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if active_category == 'rezygnacja' %}active{% endif %}">
+        🚪 Rezygnacje
+      </a>
+      <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if active_category == 'brak klasyfikacji' %}active{% endif %}">
+        ❓ Nieklasyfikowane
+      </a>
+      <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
+         class="tab-link {% if active_category == 'archiwum' %}active{% endif %}">
+        📦 Archiwum
+      </a>
+    </div>
+
+    {% if error %}
+      <div class="message error">❌ {{ error }}</div>
+    {% endif %}
+    {% if message %}
+      <div class="message success">✅ {{ message }}</div>
+    {% endif %}
+
+    <div class="emails-section">
+      {% for email in emails %}
+      <div class="email-card">
+        <div class="email-header">
+          <div class="email-meta">
+            <div class="email-meta-item">
+              <span class="email-meta-label">📧 Od:</span>
+              <span>{{ email.sent_from }}</span>
+            </div>
+            <div class="email-meta-item">
+              <span class="email-meta-label">📨 Do:</span>
+              <span>{{ email.sent_to }}</span>
+            </div>
+          </div>
+          
+          <div class="email-subject">
+            ✉️ {{ email.subject }}
+          </div>
+
+          <div class="classification-badge">
+            🏷️ {{ email.classification }}
+          </div>
+
+          <div class="email-date">
+            🕒 Odebrano: 
+            {% if email.received_at %}
+              {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
+            {% else %}
+              brak daty
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="email-body">
+          <div class="email-content">{{ email.content }}</div>
+
+          {% if email.summary %}
+          <div class="email-summary">
+            <strong>📄 Streszczenie:</strong><br>
+            {{ email.summary }}
+          </div>
+          {% endif %}
+
+          <div class="reply-section">
+            <form method="post" action="/reply">
+              <input type="hidden" name="email_id" value="{{ email.id }}">
+              <h4>✏️ Odpowiedź na wiadomość</h4>
+              <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
+              <button type="submit" class="btn btn-reply">📤 Wyślij odpowiedź</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% else %}
+        <div class="no-emails">
+          <p>📭 Brak wiadomości do wyświetlenia</p>
+          <p style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdź inne kategorie lub dodaj nowe konto e-mail</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    // Smooth scroll dla linków
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+
+    // Auto-resize dla textarea
+    document.querySelectorAll('textarea').forEach(textarea => {
+      textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+      });
+    });
+  </script>
 </body>
 </html>

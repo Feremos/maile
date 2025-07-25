@@ -127,21 +127,16 @@
 <p style="color: #34d399;">{{ add_email_message }}</p>
 {% endif %}
 
-<h2>📧 Wybierz maile do wyświetlania</h2>
-<form method="post" action="/set_visible_emails" class="email-selection">
-    {% if user.email_accounts %}
-        {% for account in user.email_accounts %}
-            <label>
-                <input type="checkbox" name="visible_emails" value="{{ account.email_address }}"
-                    {% if account.email_address in user_visible_emails %}checked{% endif %}>
-                {{ account.email_address }}
-            </label>
-        {% endfor %}
-        <button type="submit">Zapisz wybrane maile</button>
-    {% else %}
-        <p>Nie masz dodanych żadnych kont e-mail.</p>
-    {% endif %}
+<form method="get" action="/">
+  <label for="selected_email">Pokaż wiadomości z adresu:</label>
+  <select name="selected_email" onchange="this.form.submit()">
+    <option value="">-- Wszystkie --</option>
+    {% for email in user_visible_emails %}
+      <option value="{{ email }}" {% if email == selected_email %}selected{% endif %}>{{ email }}</option>
+    {% endfor %}
+  </select>
 </form>
+
 
 <form method="get" action="/emails" style="margin-bottom: 1rem; text-align: center;">
     <label for="email_filter">Pokaż maile z konta:</label>

@@ -631,25 +631,25 @@
     }
 
     // Funkcja do pokazywania/ukrywania streszczeń na podstawie liczby słów
-    function toggleSummaries() {
-      const emailCards = document.querySelectorAll('.email-card');
+function toggleSummaries() {
+  const emailCards = document.querySelectorAll('.email-card');
+  
+  emailCards.forEach(card => {
+    const content = card.querySelector('.email-content');
+    const summary = card.querySelector('.email-summary');
+    
+    if (content) {
+      const text = content.textContent.trim();
+      const charCount = text.length;  // liczba znaków z odstępami
       
-      emailCards.forEach(card => {
-        const content = card.querySelector('.email-content');
-        const summary = card.querySelector('.email-summary');
-        const wordCountSpan = card.querySelector('[id^="word-count-"]');
-        
-        if (content && wordCountSpan) {
-          const wordCount = countWords(content.textContent);
-          wordCountSpan.textContent = wordCount;
-          
-          // Pokazuj streszczenie tylko jeśli wiadomość ma więcej niż 50 słów
-          if (summary && wordCount > 50) {
-            summary.style.display = 'block';
-          }
-        }
-      });
+      // Pokazuj streszczenie jeśli tekst ma więcej niż 300 znaków
+      if (summary && charCount > 300) {
+        summary.style.display = 'block';
+      }
     }
+  });
+}
+
 
     // Uruchom po załadowaniu strony
     document.addEventListener('DOMContentLoaded', toggleSummaries);

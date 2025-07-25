@@ -128,6 +128,9 @@
 {% endif %}
 
 <form method="get" action="/">
+<p>Wybrany email: {{ selected_email }}</p>
+<p>visible: {{visible_emails }}</p>
+
   <label for="selected_email">Pokaż wiadomości z adresu:</label>
   <select name="selected_email" onchange="this.form.submit()">
     <option value="">-- Wszystkie --</option>

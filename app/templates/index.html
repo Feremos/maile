@@ -138,29 +138,6 @@
 </form>
 
 
-<form method="get" action="/emails" style="margin-bottom: 1rem; text-align: center;">
-    <label for="email_filter">Pokaż maile z konta:</label>
-    <select name="email" id="email_filter">
-        <option value="" {% if not selected_email %}selected{% endif %}>Wszystkie</option>
-        {% for account in user.email_accounts %}
-            <option value="{{ account.email_address }}" {% if selected_email == account.email_address %}selected{% endif %}>{{ account.email_address }}</option>
-        {% endfor %}
-    </select>
-
-    <label for="category_filter">Kategoria:</label>
-    <select name="category" id="category_filter">
-        <option value="" {% if not active_category %}selected{% endif %}>Wszystkie</option>
-        <option value="faktura" {% if active_category == 'faktura' %}selected{% endif %}>Faktura</option>
-        <option value="reklamacja" {% if active_category == 'reklamacja' %}selected{% endif %}>Reklamacja</option>
-        <option value="oferta" {% if active_category == 'oferta' %}selected{% endif %}>Oferta</option>
-        <option value="rezygnacja" {% if active_category == 'rezygnacja' %}selected{% endif %}>Rezygnacja</option>
-        <option value="brak klasyfikacji" {% if active_category == 'brak klasyfikacji' %}selected{% endif %}>Brak klasyfikacji</option>
-        <option value="archiwum" {% if active_category == 'archiwum' %}selected{% endif %}>Archiwum</option>
-    </select>
-
-    <button type="submit" style="margin-left: 1rem;">Filtruj</button>
-</form>
-
 <div class="tabs">
     <a href="/" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
     <a href="/category/faktura" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>

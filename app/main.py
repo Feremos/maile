@@ -170,13 +170,17 @@ def read_emails(
 ):
     visible_emails = [cred.email for cred in current_user.selected_gmail_credentials]
 
-    if selected_email and selected_email in visible_emails:
-        emails = (
-            db.query(Email)
-            .filter(Email.sent_to == selected_email, Email.is_archived == False)
-            .order_by(Email.received_at.desc())
-            .all()
-        )
+    if selected_email:
+        if selected_email in visible_emails:
+            emails = (
+                db.query(Email)
+                .filter(Email.sent_to == selected_email, Email.is_archived == False)
+                .order_by(Email.received_at.desc())
+                .all()
+            )
+        else:
+            # Jeśli ktoś wpisze email spoza listy – zwróć nic
+            emails = []
     else:
         emails = (
             db.query(Email)
@@ -192,6 +196,7 @@ def read_emails(
         "user_visible_emails": visible_emails,
         "selected_email": selected_email
     })
+
 
 
 

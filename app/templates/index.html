@@ -64,15 +64,9 @@
 
     .controls-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 2rem;
       margin-bottom: 2rem;
-    }
-
-    @media (max-width: 768px) {
-      .controls-grid {
-        grid-template-columns: 1fr;
-      }
     }
 
     .control-group {
@@ -164,7 +158,8 @@
       text-align: center;
     }
 
-    .tabs {
+    /* Taby dla kont email */
+    .email-accounts-tabs {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
@@ -176,6 +171,62 @@
       border: 1px solid #30363d;
     }
 
+    .email-accounts-tabs h3 {
+      width: 100%;
+      text-align: center;
+      color: #58a6ff;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .account-tab {
+      padding: 0.75rem 1.1rem;
+      background-color: rgba(13, 17, 23, 0.8);
+      color: #c9d1d9;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .account-tab.active,
+    .account-tab:hover {
+      background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
+      border-color: #3fb950;
+    }
+
+    /* Taby dla kategorii */
+    .category-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 2rem 0;
+      padding: 1rem;
+      background: rgba(22, 27, 34, 0.6);
+      border-radius: 12px;
+      border: 1px solid #30363d;
+    }
+
+    .category-tabs h3 {
+      width: 100%;
+      text-align: center;
+      color: #58a6ff;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
     .tab-link {
       padding: 0.75rem 1.1rem;
       background-color: rgba(13, 17, 23, 0.8);
@@ -183,7 +234,6 @@
       border-radius: 8px;
       text-decoration: none;
       transition: all 0.3s ease;
-      transform: none;
       font-weight: 500;
       border: 1px solid transparent;
       display: flex;
@@ -196,7 +246,6 @@
       background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
       color: #ffffff;
       font-weight: 600;
-      transform: none;
       box-shadow: 0 4px 12px rgba(31, 111, 235, 0.3);
       border-color: #58a6ff;
     }
@@ -281,7 +330,6 @@
         font-size: 1.1rem;
         color: #333;
     }
-
 
     .email-content {
       background: rgba(13, 17, 23, 0.4);
@@ -449,6 +497,24 @@
       animation: fadeIn 0.5s ease-out;
     }
 
+    /* Responsive */
+    @media (max-width: 768px) {
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .email-accounts-tabs,
+      .category-tabs {
+        padding: 0.5rem;
+      }
+      
+      .account-tab,
+      .tab-link {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.9rem;
+      }
+    }
+
     /* Scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
@@ -488,7 +554,7 @@
             <button type="submit" class="btn">Dodaj konto</button>
           </form>
         </div>
-
+      </div>
 
       {% if add_email_error %}
         <div class="message error">{{ add_email_error }}</div>
@@ -498,35 +564,52 @@
       {% endif %}
     </div>
 
-    
-    <div class="tabs">
+    <!-- Taby wyboru kont email -->
+    <div class="email-accounts-tabs">
+      <h3>📧 Wybierz konto e-mail</h3>
+      <a href="/{% if active_category %}category/{{ active_category }}{% endif %}" 
+         class="account-tab {% if not selected_email %}active{% endif %}">
+        📬 Wszystkie konta
+      </a>
+      {% for email in user_visible_emails %}
+        <a href="/{% if active_category %}category/{{ active_category }}{% endif %}?selected_email={{ email | urlencode }}" 
+           class="account-tab {% if email == selected_email %}active{% endif %}"
+           title="{{ email }}">
+          📨 {{ email }}
+        </a>
+      {% endfor %}
+    </div>
+
+    <!-- Taby kategorii -->
+    <div class="category-tabs">
+      <h3>📂 Kategorie wiadomości</h3>
       <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if not active_category %}active{% endif %}">
-        Wszystkie
+        📄 Wszystkie
       </a>
       <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'faktura' %}active{% endif %}">
-        Faktury
+        🧾 Faktury
       </a>
       <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'reklamacja' %}active{% endif %}">
-        Reklamacje
+        ⚠️ Reklamacje
       </a>
       <a href="/category/oferta{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'oferta' %}active{% endif %}">
-        Oferty
+        💰 Oferty
       </a>
       <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'rezygnacja' %}active{% endif %}">
-        Rezygnacje
+        ❌ Rezygnacje
       </a>
       <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'brak klasyfikacji' %}active{% endif %}">
-        Inne
+        ❓ Inne
       </a>
       <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'archiwum' %}active{% endif %}">
-        Archiwum
+        📁 Archiwum
       </a>
     </div>
 
@@ -574,7 +657,7 @@
         </div>
 
         <div class="email-body">
-          <div class =email-bodyheader>Treść wiadomości:</div>
+          <div class ="email-body-header">Treść wiadomości:</div>
           <div class="email-content">{{ email.content }}</div>
           
 
@@ -611,25 +694,24 @@
     }
 
     // Funkcja do pokazywania/ukrywania streszczeń na podstawie liczby słów
-function toggleSummaries() {
-  const emailCards = document.querySelectorAll('.email-card');
-  
-  emailCards.forEach(card => {
-    const content = card.querySelector('.email-content');
-    const summary = card.querySelector('.email-summary');
-    
-    if (content) {
-      const text = content.textContent.trim();
-      const charCount = text.length;  // liczba znaków z odstępami
+    function toggleSummaries() {
+      const emailCards = document.querySelectorAll('.email-card');
       
-      // Pokazuj streszczenie jeśli tekst ma więcej niż 300 znaków
-      if (summary && charCount > 300) {
-        summary.style.display = 'block';
-      }
+      emailCards.forEach(card => {
+        const content = card.querySelector('.email-content');
+        const summary = card.querySelector('.email-summary');
+        
+        if (content) {
+          const text = content.textContent.trim();
+          const charCount = text.length;  // liczba znaków z odstępami
+          
+          // Pokazuj streszczenie jeśli tekst ma więcej niż 300 znaków
+          if (summary && charCount > 300) {
+            summary.style.display = 'block';
+          }
+        }
+      });
     }
-  });
-}
-
 
     // Uruchom po załadowaniu strony
     document.addEventListener('DOMContentLoaded', toggleSummaries);

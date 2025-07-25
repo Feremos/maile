@@ -87,16 +87,7 @@ def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str 
         raise HTTPException(status_code=401, detail="Nieprawidłowy użytkownik")
     return user
 
-@app.get("/", response_class=HTMLResponse)
-def read_emails(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_cookie)):
-    emails = get_emails_for_user(db, current_user)
-    visible_emails = [cred.email for cred in current_user.selected_gmail_credentials]
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "user_visible_emails": visible_emails
-    })
+
 
 from fastapi import Path
 

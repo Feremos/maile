@@ -545,17 +545,18 @@
           <div class="email-meta">
             <div class="email-meta-item">
               <span class="email-meta-label">Od:</span>
-              <span>{{ email.sent_from }}</span>
+              <span>{{email.sent_from}}</span>
             </div>
             <div class="email-meta-item">
               <span class="email-meta-label">Do:</span>
-              <span>{{ email.sent_to }}</span>
+              <span>{{email.sent_to}}</span>
             </div>
           </div>
           
           <div class="email-subject">
-            {{ email.subject }}
-          </div>
+            <span class="email-meta-label">Temat:</span>
+            <span>{{email.subject}}</span>
+        </div>
 
           <div class="classification-badge">
             {{ email.classification }}
@@ -573,7 +574,7 @@
 
         <div class="email-body">
           <div class="email-content">{{ email.content }}</div>
-          <div class="email-word-count">Liczba słów: <span id="word-count-{{ email.id }}"></span></div>
+          
 
           {% if email.summary %}
           <div class="email-summary" id="summary-{{ email.id }}" style="display: none;">

@@ -409,7 +409,7 @@
 <body>
   <div class="header">
     <div class="header-content">
-      <h1>📬 System Maili Użytkowników</h1>
+      <h1>System Maili Użytkowników</h1>
     </div>
   </div>
 
@@ -417,18 +417,18 @@
     <div class="controls-section">
       <div class="controls-grid">
         <div class="control-group">
-          <h3>➕ Dodaj nowe konto e-mail</h3>
+          <h3>Dodaj nowe konto e-mail</h3>
           <form method="post" action="/add_email_account">
             <div class="form-group">
               <label for="email_address">Adres e-mail:</label>
               <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
             </div>
-            <button type="submit" class="btn">➕ Dodaj konto</button>
+            <button type="submit" class="btn">Dodaj konto</button>
           </form>
         </div>
 
         <div class="control-group">
-          <h3>🔍 Filtruj wiadomości</h3>
+          <h3>Filtruj wiadomości</h3>
           <form method="get" action="/">
             <div class="form-group">
               <label for="selected_email">Wybierz adres e-mail:</label>
@@ -443,56 +443,56 @@
           
           {% if selected_email %}
           <div class="selected-email-info">
-            <strong>📧 Aktywny filtr:</strong> {{ selected_email }}
+            <strong>Aktywny filtr:</strong> {{ selected_email }}
           </div>
           {% endif %}
         </div>
       </div>
 
       {% if add_email_error %}
-        <div class="message error">❌ {{ add_email_error }}</div>
+        <div class="message error">{{ add_email_error }}</div>
       {% endif %}
       {% if add_email_message %}
-        <div class="message success">✅ {{ add_email_message }}</div>
+        <div class="message success">{{ add_email_message }}</div>
       {% endif %}
     </div>
 
     <div class="tabs">
       <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if not active_category %}active{% endif %}">
-        📥 Wszystkie
+        Wszystkie
       </a>
       <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'faktura' %}active{% endif %}">
-        🧾 Faktury
+        Faktury
       </a>
       <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'reklamacja' %}active{% endif %}">
-        ⚠️ Reklamacje
+        Reklamacje
       </a>
       <a href="/category/oferta{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'oferta' %}active{% endif %}">
-        💼 Oferty
+        Oferty
       </a>
       <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'rezygnacja' %}active{% endif %}">
-        🚪 Rezygnacje
+        Rezygnacje
       </a>
       <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'brak klasyfikacji' %}active{% endif %}">
-        ❓ Nieklasyfikowane
+        Nieklasyfikowane
       </a>
       <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if active_category == 'archiwum' %}active{% endif %}">
-        📦 Archiwum
+        Archiwum
       </a>
     </div>
 
     {% if error %}
-      <div class="message error">❌ {{ error }}</div>
+      <div class="message error">{{ error }}</div>
     {% endif %}
     {% if message %}
-      <div class="message success">✅ {{ message }}</div>
+      <div class="message success">{{ message }}</div>
     {% endif %}
 
     <div class="emails-section">
@@ -501,25 +501,25 @@
         <div class="email-header">
           <div class="email-meta">
             <div class="email-meta-item">
-              <span class="email-meta-label">📧 Od:</span>
+              <span class="email-meta-label">Od:</span>
               <span>{{ email.sent_from }}</span>
             </div>
             <div class="email-meta-item">
-              <span class="email-meta-label">📨 Do:</span>
+              <span class="email-meta-label">Do:</span>
               <span>{{ email.sent_to }}</span>
             </div>
           </div>
           
           <div class="email-subject">
-            ✉️ {{ email.subject }}
+            {{ email.subject }}
           </div>
 
           <div class="classification-badge">
-            🏷️ {{ email.classification }}
+            {{ email.classification }}
           </div>
 
           <div class="email-date">
-            🕒 Odebrano: 
+            Odebrano: 
             {% if email.received_at %}
               {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
             {% else %}
@@ -533,7 +533,7 @@
 
           {% if email.summary %}
           <div class="email-summary">
-            <strong>📄 Streszczenie:</strong><br>
+            <strong>Streszczenie:</strong><br>
             {{ email.summary }}
           </div>
           {% endif %}
@@ -541,16 +541,16 @@
           <div class="reply-section">
             <form method="post" action="/reply">
               <input type="hidden" name="email_id" value="{{ email.id }}">
-              <h4>✏️ Odpowiedź na wiadomość</h4>
+              <h4>Odpowiedź na wiadomość</h4>
               <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
-              <button type="submit" class="btn btn-reply">📤 Wyślij odpowiedź</button>
+              <button type="submit" class="btn btn-reply">Wyślij odpowiedź</button>
             </form>
           </div>
         </div>
       </div>
       {% else %}
         <div class="no-emails">
-          <p>📭 Brak wiadomości do wyświetlenia</p>
+          <p>Brak wiadomości do wyświetlenia</p>
           <p style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdź inne kategorie lub dodaj nowe konto e-mail</p>
         </div>
       {% endfor %}

@@ -489,27 +489,6 @@
           </form>
         </div>
 
-        <div class="control-group">
-          <h3>Filtruj wiadomości</h3>
-          <form method="get" action="/">
-            <div class="form-group">
-              <label for="selected_email">Wybierz adres e-mail:</label>
-              <select name="selected_email" onchange="this.form.submit()">
-                <option value="">-- Wszystkie adresy --</option>
-                {% for email in user_visible_emails %}
-                  <option value="{{ email }}" {% if email == selected_email %}selected{% endif %}>{{ email }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </form>
-          
-          {% if selected_email %}
-          <div class="selected-email-info">
-            <strong>Aktywny filtr:</strong> {{ selected_email }}
-          </div>
-          {% endif %}
-        </div>
-      </div>
 
       {% if add_email_error %}
         <div class="message error">{{ add_email_error }}</div>
@@ -519,20 +498,7 @@
       {% endif %}
     </div>
 
-    <div class="tabs emails-tabs">
-  <a href="/{% if active_category %}category/{{ active_category }}{% endif %}{% if active_category %}?selected_email={% endif %}" 
-     class="tab-link {% if not selected_email %}active{% endif %}">
-    Wszystkie adresy
-  </a>
-  {% for email in user_visible_emails %}
-  <a href="/{% if active_category %}category/{{ active_category }}{% endif %}?selected_email={{ email | urlencode }}" 
-     class="tab-link {% if email == selected_email %}active{% endif %}">
-    {{ email }}
-  </a>
-  {% endfor %}
-</div>
-
-
+    
     <div class="tabs">
       <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if not active_category %}active{% endif %}">

@@ -1,147 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Maile użytkowników</title>
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 2rem;
-            max-width: 800px;
-            margin: auto;
-            background-color: #0a0a0a;
-            color: #ddd;
-        }
-        h1, h2 {
-            text-align: center;
-            border-bottom: 2px solid #005f99;
-            padding-bottom: 0.5rem;
-            color: #00aaff;
-        }
-        .tabs {
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background: #0f0f1a;
-            border: 1px solid #005f99;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .tabs a {
-            margin: 0.3rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            text-decoration: none;
-            vertical-align: middle;
-            color: #bbb;
-            background: #111827;
-            transition: background 0.2s, color 0.2s;
-        }
-        .tabs a.active, .tabs a:hover {
-            background: #1e3a8a;
-            color: #fff;
-            font-weight: bold;
-        }
-        .email {
-            border: 1px solid #1e3a8a;
-            background: #111;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-            transition: transform 0.1s ease;
-        }
-        .email:hover {
-            transform: scale(1.01);
-        }
-        .classification {
-            display: inline-block;
-            background: #1e3a8a;
-            border-radius: 6px;
-            padding: 0.2rem 0.5rem;
-            font-weight: bold;
-            color: #fff;
-            margin-top: 0.5rem;
-        }
-        form textarea {
-            width: 100%;
-            height: 100px;
-            margin-top: 0.5rem;
-            border-radius: 6px;
-            border: 1px solid #555;
-            background: #0f0f0f;
-            color: #ddd;
-            padding: 0.5rem;
-        }
-        form button {
-            margin-top: 0.5rem;
-            background: #1e40af;
-            border: none;
-            color: #fff;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        form button:hover {
-            background: #2563eb;
-        }
-        label {
-            font-weight: bold;
-            color: #ddd;
-        }
-        small {
-            color: #999;
-        }
-        .email-selection {
-            margin-bottom: 2rem;
-            padding: 1rem;
-            background: #111827;
-            border-radius: 10px;
-            border: 1px solid #005f99;
-        }
-        .email-selection label {
-            display: block;
-            margin-bottom: 0.3rem;
-            cursor: pointer;
-            font-weight: normal;
-        }
-        .email-selection button {
-            margin-top: 1rem;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Maile użytkowników</title>
+  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0d1117;
+      color: #e0e0e0;
+      max-width: 900px;
+      margin: auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+
+    h1, h2 {
+      color: #58a6ff;
+      border-bottom: 2px solid #1f6feb;
+      padding-bottom: 0.3rem;
+      text-align: center;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 2rem 0;
+    }
+
+    .tabs a {
+      padding: 0.5rem 1rem;
+      background-color: #161b22;
+      color: #c9d1d9;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .tabs a.active,
+    .tabs a:hover {
+      background-color: #1f6feb;
+      color: #ffffff;
+      font-weight: bold;
+    }
+
+    form {
+      margin-bottom: 2rem;
+    }
+
+    form input[type="email"],
+    form select,
+    form textarea {
+      width: 100%;
+      padding: 0.7rem;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background-color: #0d1117;
+      color: #e6edf3;
+      margin-top: 0.3rem;
+    }
+
+    form button {
+      background-color: #238636;
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    form button:hover {
+      background-color: #2ea043;
+    }
+
+    .email {
+      background-color: #161b22;
+      padding: 1.5rem;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      transition: transform 0.15s ease;
+    }
+
+    .email:hover {
+      transform: scale(1.01);
+    }
+
+    .classification {
+      display: inline-block;
+      background-color: #1f6feb;
+      color: #fff;
+      font-weight: bold;
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+      margin-top: 1rem;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 1rem;
+      display: block;
+    }
+
+    small {
+      display: block;
+      margin-top: 0.5rem;
+      color: #8b949e;
+    }
+
+    .message {
+      text-align: center;
+      font-weight: bold;
+      margin: 1rem 0;
+    }
+
+    .message.error {
+      color: #f85149;
+    }
+
+    .message.success {
+      color: #3fb950;
+    }
+
+  </style>
 </head>
 <body>
 
-<h2>➕ Dodaj konto e-mail</h2>
-<form method="post" action="/add_email_account">
-    <label for="email_address">Adres e-mail:</label><br>
-    <input type="email" id="email_address" name="email_address" required><br><br>
+  <h2>➕ Dodaj konto e-mail</h2>
+  <form method="post" action="/add_email_account">
+    <label for="email_address">Adres e-mail:</label>
+    <input type="email" id="email_address" name="email_address" required>
     <button type="submit">Dodaj konto</button>
-</form>
+  </form>
 
-{% if add_email_error %}
-<p style="color: #f87171;">{{ add_email_error }}</p>
-{% endif %}
-{% if add_email_message %}
-<p style="color: #34d399;">{{ add_email_message }}</p>
-{% endif %}
+  {% if add_email_error %}
+    <p class="message error">{{ add_email_error }}</p>
+  {% endif %}
+  {% if add_email_message %}
+    <p class="message success">{{ add_email_message }}</p>
+  {% endif %}
 
-<form method="get" action="/">
-<p>Wybrany email: {{ selected_email }}</p>
-<p>visible: {{visible_emails }}</p>
+  <form method="get" action="/">
+    <label for="selected_email">Pokaż wiadomości z adresu:</label>
+    <select name="selected_email" onchange="this.form.submit()">
+      <option value="">-- Wszystkie --</option>
+      {% for email in user_visible_emails %}
+        <option value="{{ email }}" {% if email == selected_email %}selected{% endif %}>{{ email }}</option>
+      {% endfor %}
+    </select>
+    <p>📬 Wybrany email: <strong>{{ selected_email }}</strong></p>
+  </form>
 
-  <label for="selected_email">Pokaż wiadomości z adresu:</label>
-  <select name="selected_email" onchange="this.form.submit()">
-    <option value="">-- Wszystkie --</option>
-    {% for email in user_visible_emails %}
-      <option value="{{ email }}" {% if email == selected_email %}selected{% endif %}>{{ email }}</option>
-    {% endfor %}
-  </select>
-</form>
-
-
-<div class="tabs">
+  <div class="tabs">
     <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
     <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
     <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
@@ -149,21 +164,21 @@
     <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
     <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
     <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'archiwum' %}active{% endif %}">📦 Archiwum</a>
-</div>
+  </div>
 
+  {% if error %}
+    <p class="message error">{{ error }}</p>
+  {% endif %}
+  {% if message %}
+    <p class="message success">{{ message }}</p>
+  {% endif %}
 
-{% if error %}
-    <p style="color: #f87171; text-align: center;">{{ error }}</p>
-{% endif %}
-{% if message %}
-    <p style="color: #34d399; text-align: center;">{{ message }}</p>
-{% endif %}
+  <h1>📬 Maile użytkowników</h1>
 
-<h1>📬 Maile użytkowników</h1>
-{% for email in emails %}
-<div class="email">
+  {% for email in emails %}
+  <div class="email">
     <p><strong>📧 Od:</strong> {{ email.sent_from }}</p>
-    <p><strong>📧 Do:</strong> {{ email.sent_to }}</p>
+    <p><strong>📨 Do:</strong> {{ email.sent_to }}</p>
     <p><strong>✉️ Temat:</strong> {{ email.subject }}</p>
     <p><strong>📝 Treść:</strong> {{ email.content }}</p>
     <p class="classification">🏷️ {{ email.classification }}</p>
@@ -173,24 +188,24 @@
     {% endif %}
 
     <small>
-        Odebrano:
-        {% if email.received_at %}
-            {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
-        {% else %}
-            brak daty
-        {% endif %}
+      Odebrano: 
+      {% if email.received_at %}
+        {{ email.received_at.strftime('%Y-%m-%d %H:%M') }}
+      {% else %}
+        brak daty
+      {% endif %}
     </small>
 
     <form method="post" action="/reply">
-        <input type="hidden" name="email_id" value="{{ email.id }}">
-        <label for="reply_{{ email.id }}">✏️ Odpowiedź:</label><br>
-        <textarea name="reply_text" id="reply_{{ email.id }}">{{ email.suggested_reply }}</textarea><br>
-        <button type="submit">📤 Wyślij odpowiedź</button>
+      <input type="hidden" name="email_id" value="{{ email.id }}">
+      <label for="reply_{{ email.id }}">✏️ Odpowiedź:</label>
+      <textarea name="reply_text" id="reply_{{ email.id }}">{{ email.suggested_reply }}</textarea>
+      <button type="submit">📤 Wyślij odpowiedź</button>
     </form>
-</div>
-{% else %}
-<p>Brak wiadomości do wyświetlenia.</p>
-{% endfor %}
+  </div>
+  {% else %}
+    <p style="text-align: center;">Brak wiadomości do wyświetlenia.</p>
+  {% endfor %}
 
 </body>
 </html>

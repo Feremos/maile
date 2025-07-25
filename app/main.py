@@ -14,6 +14,7 @@ from passlib.context import CryptContext
 from cryptography.fernet import Fernet
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
+from fastapi import Query
 
 from .db import SessionLocal, engine
 from .models import Base, User, Email, GmailCredentials

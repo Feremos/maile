@@ -269,10 +269,33 @@
       background: rgba(13, 17, 23, 0.4);
       border: 1px solid #30363d;
       border-radius: 8px;
-      padding: 1rem;
+      padding: 1.5rem;
       margin-bottom: 1.5rem;
-      line-height: 1.7;
+      line-height: 1.8;
       white-space: pre-wrap;
+      font-size: 1rem;
+      color: #e6edf3;
+      max-height: 300px;
+      overflow-y: auto;
+      word-wrap: break-word;
+    }
+
+    .email-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .email-content::-webkit-scrollbar-track {
+      background: rgba(13, 17, 23, 0.5);
+      border-radius: 3px;
+    }
+
+    .email-content::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 3px;
+    }
+
+    .email-content::-webkit-scrollbar-thumb:hover {
+      background: #58a6ff;
     }
 
     .classification-badge {
@@ -292,8 +315,28 @@
       background: rgba(56, 139, 253, 0.1);
       border: 1px solid #388bfd;
       border-radius: 8px;
-      padding: 1rem;
+      padding: 1.2rem;
       margin-bottom: 1rem;
+    }
+
+    .email-summary strong {
+      color: #58a6ff;
+      font-size: 1rem;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .email-summary-content {
+      color: #c9d1d9;
+      line-height: 1.6;
+    }
+
+    .email-word-count {
+      color: #8b949e;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+      text-align: right;
+      font-style: italic;
     }
 
     .email-date {
@@ -530,11 +573,12 @@
 
         <div class="email-body">
           <div class="email-content">{{ email.content }}</div>
+          <div class="email-word-count">Liczba słów: <span id="word-count-{{ email.id }}"></span></div>
 
           {% if email.summary %}
-          <div class="email-summary">
-            <strong>Streszczenie:</strong><br>
-            {{ email.summary }}
+          <div class="email-summary" id="summary-{{ email.id }}" style="display: none;">
+            <strong>Streszczenie:</strong>
+            <div class="email-summary-content">{{ email.summary }}</div>
           </div>
           {% endif %}
 
@@ -558,6 +602,35 @@
   </div>
 
   <script>
+    // Funkcja do liczenia słów
+    function countWords(text) {
+      return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+    }
+
+    // Funkcja do pokazywania/ukrywania streszczeń na podstawie liczby słów
+    function toggleSummaries() {
+      const emailCards = document.querySelectorAll('.email-card');
+      
+      emailCards.forEach(card => {
+        const content = card.querySelector('.email-content');
+        const summary = card.querySelector('.email-summary');
+        const wordCountSpan = card.querySelector('[id^="word-count-"]');
+        
+        if (content && wordCountSpan) {
+          const wordCount = countWords(content.textContent);
+          wordCountSpan.textContent = wordCount;
+          
+          // Pokazuj streszczenie tylko jeśli wiadomość ma więcej niż 50 słów
+          if (summary && wordCount > 50) {
+            summary.style.display = 'block';
+          }
+        }
+      });
+    }
+
+    // Uruchom po załadowaniu strony
+    document.addEventListener('DOMContentLoaded', toggleSummaries);
+
     // Smooth scroll dla linków
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function (e) {

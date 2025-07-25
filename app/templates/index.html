@@ -519,6 +519,20 @@
       {% endif %}
     </div>
 
+    <div class="tabs emails-tabs">
+  <a href="/{% if active_category %}category/{{ active_category }}{% endif %}{% if active_category %}?selected_email={% endif %}" 
+     class="tab-link {% if not selected_email %}active{% endif %}">
+    Wszystkie adresy
+  </a>
+  {% for email in user_visible_emails %}
+  <a href="/{% if active_category %}category/{{ active_category }}{% endif %}?selected_email={{ email | urlencode }}" 
+     class="tab-link {% if email == selected_email %}active{% endif %}">
+    {{ email }}
+  </a>
+  {% endfor %}
+</div>
+
+
     <div class="tabs">
       <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if not active_category %}active{% endif %}">

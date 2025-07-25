@@ -228,6 +228,15 @@
     .email-header > div {
         margin: 1px 0;
     }
+    .email-classification-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1px 0;
+    }
+
     .email-meta {
         display: flex;
         flex-wrap: wrap;
@@ -550,34 +559,36 @@
       {% for email in emails %}
       <div class="email-card">
         <div class="email-header">
-          <div class="email-meta">
-            <div class="email-meta-item">
-              <span class="email-meta-label">Od:</span>
-              <span>{{email.sent_from}}</span>
+            <div class="email-meta">
+                <div class="email-meta-item">
+                <span class="email-meta-label">Od:</span>
+                <span>{{email.sent_from}}</span>
+                </div>
+                <div class="email-meta-item">
+                <span class="email-meta-label">Do:</span>
+                <span>{{email.sent_to}}</span>
+                </div>
             </div>
-            <div class="email-meta-item">
-              <span class="email-meta-label">Do:</span>
-              <span>{{email.sent_to}}</span>
+            
+            <div class="email-subject">
+                <span class="email-meta-label">Temat:</span>
+                <span>{{email.subject}}</span>
             </div>
-          </div>
-          
-          <div class="email-subject">
-            <span class="email-meta-label">Temat:</span>
-            <span>{{email.subject}}</span>
-        </div>
 
-          <div class="classification-badge">
-            {{ email.classification }}
-          </div>
+            <div class="classification-date-row" style="display: flex; gap: 20px; align-items: center;">
+                <div class="classification-badge">
+                {{ email.classification }}
+                </div>
 
-          <div class="email-date">
-            Odebrano: 
-            {% if email.received_at %}
-              {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
-            {% else %}
-              brak daty
-            {% endif %}
-          </div>
+                <div class="email-date">
+                Odebrano: 
+                {% if email.received_at %}
+                    {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
+                {% else %}
+                    brak daty
+                {% endif %}
+                </div>
+            </div>
         </div>
 
         <div class="email-body">

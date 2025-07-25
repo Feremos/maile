@@ -159,6 +159,42 @@ def read_archived_emails(
         "active_category": "archiwum"
     })
 
+from fastapi import Query
+
+@app.get("/", response_class=HTMLResponse)
+def read_emails(
+    request: Request,
+    selected_email: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    visible_emails = [cred.email for cred in current_user.selected_gmail_credentials]
+
+    if selected_email and selected_email in visible_emails:
+        emails = (
+            db.query(Email)
+            .filter(Email.sent_to == selected_email, Email.is_archived == False)
+            .order_by(Email.received_at.desc())
+            .all()
+        )
+    else:
+        emails = (
+            db.query(Email)
+            .filter(Email.sent_to.in_(visible_emails), Email.is_archived == False)
+            .order_by(Email.received_at.desc())
+            .all()
+        )
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": emails,
+        "user": current_user,
+        "user_visible_emails": visible_emails,
+        "selected_email": selected_email
+    })
+
+
+
 @app.post("/add_email_account", response_class=HTMLResponse)
 def add_email_account(
     request: Request,

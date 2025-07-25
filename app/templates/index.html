@@ -142,13 +142,13 @@
 
 
 <div class="tabs">
-    <a href="/{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
-    <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
-    <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
-    <a href="/category/oferta{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
-    <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
-    <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
-    <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | url_encode }}{% endif %}" class="{% if active_category == 'archiwum' %}active{% endif %}">📦 Archiwum</a>
+    <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if not active_category %}active{% endif %}">📥 Wszystkie</a>
+    <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'faktura' %}active{% endif %}">🧾 Faktura</a>
+    <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'reklamacja' %}active{% endif %}">⚠️ Reklamacja</a>
+    <a href="/category/oferta{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'oferta' %}active{% endif %}">💼 Oferta</a>
+    <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'rezygnacja' %}active{% endif %}">🚪 Rezygnacja</a>
+    <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'brak klasyfikacji' %}active{% endif %}">❓ Brak klasyfikacji</a>
+    <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" class="{% if active_category == 'archiwum' %}active{% endif %}">📦 Archiwum</a>
 </div>
 
 

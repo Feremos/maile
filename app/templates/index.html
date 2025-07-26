@@ -542,23 +542,27 @@
 
     // Funkcja odliczania czasu dla oczekujących emaili
     function updateCountdowns() {
+      {% if pending_emails %}
       {% for scheduled_email in pending_emails %}
-      const scheduledTime{{ scheduled_email.id }} = new Date('{{ scheduled_email.scheduled_time.isoformat() }}Z');
-      const countdownElement{{ scheduled_email.id }} = document.getElementById('countdown-{{ scheduled_email.id }}');
-      
-      if (countdownElement{{ scheduled_email.id }}) {
-        const now = new Date();
-        const timeDiff = scheduledTime{{ scheduled_email.id }} - now;
+      (function() {
+        const scheduledTime = new Date('{{ scheduled_email.scheduled_time.isoformat() }}Z');
+        const countdownElement = document.getElementById('countdown-{{ scheduled_email.id }}');
         
-        if (timeDiff > 0) {
-          const minutes = Math.floor(timeDiff / 60000);
-          const seconds = Math.floor((timeDiff % 60000) / 1000);
-          countdownElement{{ scheduled_email.id }}.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        } else {
-          countdownElement{{ scheduled_email.id }}.textContent = 'Wysyłanie...';
+        if (countdownElement) {
+          const now = new Date();
+          const timeDiff = scheduledTime - now;
+          
+          if (timeDiff > 0) {
+            const minutes = Math.floor(timeDiff / 60000);
+            const seconds = Math.floor((timeDiff % 60000) / 1000);
+            countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          } else {
+            countdownElement.textContent = 'Wysyłanie...';
+          }
         }
-      }
+      })();
       {% endfor %}
+      {% endif %}
     }
 
     // Uruchom po załadowaniu strony

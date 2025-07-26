@@ -20,7 +20,7 @@ import asyncio
 from enum import Enum
 
 from .db import SessionLocal, engine
-from .models import Base, User, Email, GmailCredentials
+from .models import Base, User, Email, GmailCredentials, ScheduledEmail
 
 load_dotenv()
 

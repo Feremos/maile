@@ -25,6 +25,10 @@ class ScheduledEmail(Base):
     reply_text = Column(String)
     scheduled_time = Column(DateTime)
     status = Column(String, default="pending")  # pending/sent/cancelled
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relacja do Email
+    email = relationship("Email", back_populates="scheduled_emails")
     
 class User(Base):
     __tablename__ = "users"

@@ -17,6 +17,15 @@ user_selected_emails = Table(
     Column("gmail_credential_id", Integer, ForeignKey("gmail_credentials.id"), primary_key=True),
 )
 
+class ScheduledEmail(Base):
+    __tablename__ = "scheduled_emails"
+    
+    id = Column(Integer, primary_key=True)
+    email_id = Column(Integer, ForeignKey("emails.id"))
+    reply_text = Column(String)
+    scheduled_time = Column(DateTime)
+    status = Column(String, default="pending")  # pending/sent/cancelled
+    
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)

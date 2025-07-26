@@ -4,299 +4,97 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>System Maili Użytkowników</title>
-  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    /* Minimalne dostosowania do water.css */
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-      color: #e6edf3;
-      min-height: 100vh;
-      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
     }
 
     .header {
-      background: rgba(22, 27, 34, 0.8);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid #30363d;
-      padding: 1.5rem 0;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    .header-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 2rem;
-    }
-
-    .header h1 {
-      color: #58a6ff;
-      font-size: 2rem;
-      font-weight: 600;
       text-align: center;
-      margin-bottom: 0;
-      border: none;
-      padding: 0;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--border);
     }
 
     .controls-section {
-      background: rgba(22, 27, 34, 0.6);
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      backdrop-filter: blur(10px);
-    }
-
-    .controls-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 2rem;
-      margin-bottom: 2rem;
-    }
-
-    .control-group {
-      background: rgba(13, 17, 23, 0.5);
-      border: 1px solid #30363d;
-      border-radius: 8px;
+      background: var(--background-alt);
       padding: 1.5rem;
-    }
-
-    .control-group h3 {
-      color: #58a6ff;
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
     }
 
     .form-group {
       margin-bottom: 1rem;
     }
 
-    label {
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      display: block;
-      color: #d4dbe6;
-    }
-
-    input[type="email"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 0.75rem;
-      border-radius: 8px;
-      border: 1px solid #30363d;
-      background-color: #0d1117;
-      color: #e6edf3;
-      font-size: 0.95rem;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    input[type="email"]:focus,
-    select:focus,
-    textarea:focus {
-      outline: none;
-      border-color: #1f6feb;
-      box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.2);
-    }
-
-    .btn {
-      background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-      color: #fff;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .btn:hover {
-      background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(35, 134, 54, 0.3);
-    }
-
-    .btn-reply {
-      background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
-      padding: 0.5rem 1rem;
-      font-size: 0.9rem;
-    }
-
-    .btn-reply:hover {
-      background: linear-gradient(135deg, #388bfd 0%, #1f6feb 100%);
-      box-shadow: 0 4px 12px rgba(31, 111, 235, 0.3);
-    }
-
-    .selected-email-info {
-      background: rgba(31, 111, 235, 0.1);
-      border: 1px solid #1f6feb;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-top: 1rem;
-      text-align: center;
-    }
-
-    /* Taby dla kont email */
-    .email-accounts-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem;
-      margin: 2rem 0;
-      padding: 1rem;
-      background: rgba(22, 27, 34, 0.6);
-      border-radius: 12px;
-      border: 1px solid #30363d;
-    }
-
-    .email-accounts-tabs h3 {
-      width: 100%;
-      text-align: center;
-      color: #58a6ff;
-      margin-bottom: 1rem;
-      font-size: 1.1rem;
-    }
-
-    .account-tab {
-      padding: 0.75rem 1.1rem;
-      background-color: rgba(13, 17, 23, 0.8);
-      color: #c9d1d9;
-      border-radius: 8px;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      font-weight: 500;
-      border: 1px solid transparent;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .account-tab.active,
-    .account-tab:hover {
-      background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
-      color: #ffffff;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
-      border-color: #3fb950;
-    }
-
-    /* Taby dla kategorii */
+    .email-accounts-tabs,
     .category-tabs {
+      background: var(--background-alt);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      border: 1px solid var(--border);
+    }
+
+    .email-accounts-tabs h3,
+    .category-tabs h3 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: var(--text-main);
+    }
+
+    .tabs-container {
       display: flex;
       flex-wrap: wrap;
+      gap: 0.5rem;
       justify-content: center;
-      gap: 0.5rem;
-      margin: 2rem 0;
-      padding: 1rem;
-      background: rgba(22, 27, 34, 0.6);
-      border-radius: 12px;
-      border: 1px solid #30363d;
     }
 
-    .category-tabs h3 {
-      width: 100%;
-      text-align: center;
-      color: #58a6ff;
-      margin-bottom: 1rem;
-      font-size: 1.1rem;
-    }
-
+    .account-tab,
     .tab-link {
-      padding: 0.75rem 1.1rem;
-      background-color: rgba(13, 17, 23, 0.8);
-      color: #c9d1d9;
-      border-radius: 8px;
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: var(--background);
+      color: var(--text-main);
       text-decoration: none;
-      transition: all 0.3s ease;
-      font-weight: 500;
-      border: 1px solid transparent;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      transition: all 0.2s ease;
     }
 
-    .tab-link.active,
-    .tab-link:hover {
-      background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
-      color: #ffffff;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(31, 111, 235, 0.3);
-      border-color: #58a6ff;
-    }
-
-    .emails-section {
-      margin-top: 2rem;
+    .account-tab:hover,
+    .tab-link:hover,
+    .account-tab.active,
+    .tab-link.active {
+      background: var(--button-base);
+      color: var(--button-text);
+      text-decoration: none;
     }
 
     .email-card {
-      background: rgba(22, 27, 34, 0.8);
-      border: 1px solid #30363d;
-      border-radius: 12px;
+      background: var(--background-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
       margin-bottom: 2rem;
       overflow: hidden;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
-    }
-
-    .email-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-      border-color: #58a6ff;
     }
 
     .email-header {
-      background: rgba(13, 17, 23, 0.6);
+      background: var(--background);
       padding: 1.5rem;
-      border-bottom: 1px solid #30363d;
-    }
-    .email-header > div {
-        margin: 1px 0;
-    }
-    .email-classification-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin: 1px 0;
+      border-bottom: 1px solid var(--border);
     }
 
     .email-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    @media (max-width: 768px) {
-      .email-meta {
-        grid-template-columns: 1fr;
-      }
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
     }
 
     .email-meta-item {
@@ -306,128 +104,88 @@
     }
 
     .email-meta-label {
-      font-weight: 600;
-      color: #58a6ff;
-      min-width: 30px;
+      font-weight: bold;
+      color: var(--text-main);
     }
 
     .email-subject {
       font-size: 1.1rem;
-      font-weight: 600;
-      color: #e6edf3;
-      margin-bottom: 0.7rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .classification-date-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .classification-badge {
+      background: var(--button-base);
+      color: var(--button-text);
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .email-date {
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
 
     .email-body {
       padding: 1.5rem;
     }
+
     .email-body-header {
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        font-size: 1.1rem;
-        color: #58a6ff;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
     }
 
     .email-content {
-      background: rgba(13, 17, 23, 0.4);
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      line-height: 1.8;
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
+      margin-bottom: 1rem;
       white-space: pre-wrap;
-      font-size: 1rem;
-      color: #e6edf3;
       max-height: 300px;
       overflow-y: auto;
       word-wrap: break-word;
     }
 
-    .email-content::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .email-content::-webkit-scrollbar-track {
-      background: rgba(13, 17, 23, 0.5);
-      border-radius: 3px;
-    }
-
-    .email-content::-webkit-scrollbar-thumb {
-      background: #30363d;
-      border-radius: 3px;
-    }
-
-    .email-content::-webkit-scrollbar-thumb:hover {
-      background: #58a6ff;
-    }
-
-    .classification-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
-      color: #fff;
-      font-weight: 600;
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      margin-bottom: 0rem;
-      margin-top: 0.2rem;
-      box-shadow: 0 2px 8px rgba(31, 111, 235, 0.3);
-    }
-
     .email-summary {
-      background: rgba(56, 139, 253, 0.1);
-      border: 1px solid #388bfd;
-      border-radius: 8px;
-      padding: 1.2rem;
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
       margin-bottom: 1rem;
     }
 
     .email-summary strong {
-      color: #58a6ff;
-      font-size: 1rem;
       display: block;
       margin-bottom: 0.5rem;
     }
 
-    .email-summary-content {
-      color: #c9d1d9;
-      line-height: 1.6;
-    }
-
-    .email-word-count {
-      color: #8b949e;
-      font-size: 0.85rem;
-      margin-top: 0.5rem;
-      text-align: right;
-      font-style: italic;
-    }
-
-    .email-date {
-      color: #8b949e;
-      font-size: 0.9rem;
-      text-align: right;
-      margin-bottom: 0.8rem;
-    }
-
     .reply-section {
-      background: rgba(13, 17, 23, 0.3);
-      border-top: 1px solid #30363d;
+      background: var(--background);
+      border-top: 1px solid var(--border);
       padding: 1.5rem;
     }
 
     .reply-section h4 {
-      color: #58a6ff;
       margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
     }
 
     .reply-textarea {
+      width: 100%;
       min-height: 120px;
       resize: vertical;
       margin-bottom: 1rem;
@@ -435,29 +193,27 @@
 
     .message {
       text-align: center;
-      font-weight: 600;
-      margin: 1rem 0;
       padding: 1rem;
-      border-radius: 8px;
+      border-radius: 4px;
+      margin: 1rem 0;
     }
 
     .message.error {
-      color: #f85149;
-      background: rgba(248, 81, 73, 0.1);
-      border: 1px solid #f85149;
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c33;
     }
 
     .message.success {
-      color: #3fb950;
-      background: rgba(63, 185, 80, 0.1);
-      border: 1px solid #3fb950;
+      background: #efe;
+      border: 1px solid #cfc;
+      color: #393;
     }
 
     .no-emails {
       text-align: center;
       padding: 3rem;
-      color: #8b949e;
-      font-size: 1.1rem;
+      color: var(--text-muted);
     }
 
     .stats-bar {
@@ -466,8 +222,8 @@
       gap: 2rem;
       margin: 2rem 0;
       padding: 1rem;
-      background: rgba(22, 27, 34, 0.6);
-      border-radius: 8px;
+      background: var(--background-alt);
+      border-radius: 4px;
       flex-wrap: wrap;
     }
 
@@ -477,96 +233,65 @@
 
     .stat-number {
       font-size: 1.5rem;
-      font-weight: 700;
-      color: #58a6ff;
+      font-weight: bold;
       display: block;
     }
 
     .stat-label {
       font-size: 0.9rem;
-      color: #8b949e;
+      color: var(--text-muted);
     }
 
-    /* Animacje */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .email-card {
-      animation: fadeIn 0.5s ease-out;
-    }
-
-    /* Responsive */
+    /* Responsywność */
     @media (max-width: 768px) {
-      .controls-grid {
-        grid-template-columns: 1fr;
+      .email-meta {
+        flex-direction: column;
+        gap: 0.5rem;
       }
       
-      .email-accounts-tabs,
-      .category-tabs {
-        padding: 0.5rem;
+      .classification-date-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .tabs-container {
+        flex-direction: column;
       }
       
       .account-tab,
       .tab-link {
-        padding: 0.5rem 0.8rem;
-        font-size: 0.9rem;
+        text-align: center;
       }
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #0d1117;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #30363d;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #58a6ff;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="header-content">
-      <h1>System Maili Użytkowników</h1>
-    </div>
+    <h1>System Maili Użytkowników</h1>
   </div>
 
-  <div class="container">
-    <div class="controls-section">
-      <div class="controls-grid">
-        <div class="control-group">
-          <h3>Dodaj nowe konto e-mail</h3>
-          <form method="post" action="/add_email_account">
-            <div class="form-group">
-              <label for="email_address">Adres e-mail:</label>
-              <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
-            </div>
-            <button type="submit" class="btn">Dodaj konto</button>
-          </form>
-        </div>
+  <div class="controls-section">
+    <h3>Dodaj nowe konto e-mail</h3>
+    <form method="post" action="/add_email_account">
+      <div class="form-group">
+        <label for="email_address">Adres e-mail:</label>
+        <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
       </div>
+      <button type="submit">Dodaj konto</button>
+    </form>
 
-      {% if add_email_error %}
-        <div class="message error">{{ add_email_error }}</div>
-      {% endif %}
-      {% if add_email_message %}
-        <div class="message success">{{ add_email_message }}</div>
-      {% endif %}
-    </div>
+    {% if add_email_error %}
+      <div class="message error">{{ add_email_error }}</div>
+    {% endif %}
+    {% if add_email_message %}
+      <div class="message success">{{ add_email_message }}</div>
+    {% endif %}
+  </div>
 
-    <!-- Taby wyboru kont email -->
-    <div class="email-accounts-tabs">
-      <h3>📧 Wybierz konto e-mail</h3>
+  <!-- Taby wyboru kont email -->
+  <div class="email-accounts-tabs">
+    <h3>📧 Wybierz konto e-mail</h3>
+    <div class="tabs-container">
       <a href="/{% if active_category %}category/{{ active_category }}{% endif %}" 
          class="account-tab {% if not selected_email %}active{% endif %}">
         Wszystkie konta
@@ -579,10 +304,12 @@
         </a>
       {% endfor %}
     </div>
+  </div>
 
-    <!-- Taby kategorii -->
-    <div class="category-tabs">
-      <h3>Kategorie wiadomości</h3>
+  <!-- Taby kategorii -->
+  <div class="category-tabs">
+    <h3>Kategorie wiadomości</h3>
+    <div class="tabs-container">
       <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
          class="tab-link {% if not active_category %}active{% endif %}">
         Wszystkie
@@ -612,79 +339,78 @@
         Archiwum
       </a>
     </div>
+  </div>
 
-    {% if error %}
-      <div class="message error">{{ error }}</div>
-    {% endif %}
-    {% if message %}
-      <div class="message success">{{ message }}</div>
-    {% endif %}
+  {% if error %}
+    <div class="message error">{{ error }}</div>
+  {% endif %}
+  {% if message %}
+    <div class="message success">{{ message }}</div>
+  {% endif %}
 
-    <div class="emails-section">
-      {% for email in emails %}
-      <div class="email-card">
-        <div class="email-header">
-            <div class="email-meta">
-                <div class="email-meta-item">
-                <span class="email-meta-label">Od:</span>
-                <span>{{email.sent_from}}</span>
-                </div>
-                <div class="email-meta-item">
-                <span class="email-meta-label">Do:</span>
-                <span>{{email.sent_to}}</span>
-                </div>
-            </div>
-            
-            <div class="email-subject">
-                <span class="email-meta-label">Temat:</span>
-                <span>{{email.subject}}</span>
-            </div>
-
-            <div class="classification-date-row" style="display: flex; justify-content: space-between; align-items: flex-end;">
-                <div class="classification-badge">
-                {{ email.classification }}
-                </div>
-
-                <div class="email-date">
-                Odebrano: 
-                {% if email.received_at %}
-                    {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
-                {% else %}
-                    brak daty
-                {% endif %}
-                </div>
-            </div>
+  <div class="emails-section">
+    {% for email in emails %}
+    <div class="email-card">
+      <div class="email-header">
+        <div class="email-meta">
+          <div class="email-meta-item">
+            <span class="email-meta-label">Od:</span>
+            <span>{{email.sent_from}}</span>
+          </div>
+          <div class="email-meta-item">
+            <span class="email-meta-label">Do:</span>
+            <span>{{email.sent_to}}</span>
+          </div>
+        </div>
+        
+        <div class="email-subject">
+          <span class="email-meta-label">Temat:</span>
+          <span>{{email.subject}}</span>
         </div>
 
-        <div class="email-body">
-          <div class ="email-body-header">Treść wiadomości:</div>
-          <div class="email-content">{{ email.content }}</div>
-          
-
-          {% if email.summary %}
-          <div class="email-summary" id="summary-{{ email.id }}" style="display: none;">
-            <strong>Streszczenie:</strong>
-            <div class="email-summary-content">{{ email.summary }}</div>
+        <div class="classification-date-row">
+          <div class="classification-badge">
+            {{ email.classification }}
           </div>
-          {% endif %}
 
-          <div class="reply-section">
-            <form method="post" action="/reply">
-              <input type="hidden" name="email_id" value="{{ email.id }}">
-              <h4>Odpowiedź na wiadomość</h4>
-              <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
-              <button type="submit" class="btn btn-reply">Wyślij odpowiedź</button>
-            </form>
+          <div class="email-date">
+            Odebrano: 
+            {% if email.received_at %}
+              {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
+            {% else %}
+              brak daty
+            {% endif %}
           </div>
         </div>
       </div>
-      {% else %}
-        <div class="no-emails">
-          <p>Brak wiadomości do wyświetlenia</p>
-          <p style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdź inne kategorie lub dodaj nowe konto e-mail</p>
+
+      <div class="email-body">
+        <div class="email-body-header">Treść wiadomości:</div>
+        <div class="email-content">{{ email.content }}</div>
+        
+        {% if email.summary %}
+        <div class="email-summary" id="summary-{{ email.id }}" style="display: none;">
+          <strong>Streszczenie:</strong>
+          <div class="email-summary-content">{{ email.summary }}</div>
         </div>
-      {% endfor %}
+        {% endif %}
+
+        <div class="reply-section">
+          <form method="post" action="/reply">
+            <input type="hidden" name="email_id" value="{{ email.id }}">
+            <h4>Odpowiedź na wiadomość</h4>
+            <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
+            <button type="submit">Wyślij odpowiedź</button>
+          </form>
+        </div>
+      </div>
     </div>
+    {% else %}
+      <div class="no-emails">
+        <p>Brak wiadomości do wyświetlenia</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdź inne kategorie lub dodaj nowe konto e-mail</p>
+      </div>
+    {% endfor %}
   </div>
 
   <script>

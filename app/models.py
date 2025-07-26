@@ -74,5 +74,8 @@ class Email(Base):
     thread_id = Column(String)
     received_from = Column(String)
     is_archived = Column(Boolean, default=False)
+    
+    # Relacja do ScheduledEmail
+    scheduled_emails = relationship("ScheduledEmail", back_populates="email")
 
 Base.metadata.create_all(bind=engine)

@@ -33,16 +33,7 @@ if not SECRET_KEY or not FERNET_KEY:
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 fernet = Fernet(FERNET_KEY.encode())
 
-# Dodaj nową tabelę do models.py
-class ScheduledEmail(Base):
-    __tablename__ = "scheduled_emails"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    email_id = Column(Integer, ForeignKey("emails.id"))
-    reply_text = Column(Text)
-    scheduled_time = Column(DateTime)
-    status = Column(String, default="pending")  # pending/sent/cancelled
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()

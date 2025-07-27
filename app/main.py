@@ -18,6 +18,7 @@ from typing import List, Optional
 from fastapi import Query
 import asyncio
 from enum import Enum
+# to run : uvicorn app.main:app --reload
 
 from .db import SessionLocal, engine
 from .models import Base, User, Email, GmailCredentials, ScheduledEmail

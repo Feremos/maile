@@ -1,0 +1,30 @@
+# Ignoruj pliki środowiskowe
+.env
+
+# Ignoruj pliki cache Pythona
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignoruj katalogi z zależnościami
+venv/
+.env/
+
+# Ignoruj pliki edytorów
+.vscode/
+.idea/
+
+# Ignoruj logi i pliki tymczasowe
+*.log
+*.sqlite3
+*.db
+
+# Ignoruj pliki systemowe
+.DS_Store
+Thumbs.db
+
+.pytest_cache
+test.db
+pytest.ini
+app/tests

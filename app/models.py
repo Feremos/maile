@@ -52,6 +52,8 @@ class GmailCredentials(Base):
     smtp_server = Column(String, nullable=False)
     smtp_port = Column(Integer, nullable=False)
     use_tls = Column(Boolean, default=True)
+    imap_server = Column(String, nullable=False)
+    imap_port = Column(Integer, nullable=False)
 
     users_selected_by = relationship(
         "User",

@@ -12,6 +12,21 @@
       margin: 0 auto;
       padding: 1rem;
     }
+          .logout-button {
+        display: inline-block;
+        background: #6c757d;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: background-color 0.2s;
+      }
+
+      .logout-button:hover {
+        background: #5a6268;
+        color: white;
+      }
 
     .header {
       text-align: center;
@@ -313,6 +328,8 @@
         flex-direction: column;
         align-items: flex-start;
       }
+
+
     }
   </style>
 </head>
@@ -322,16 +339,22 @@
   </div>
 
   <div class="controls-section">
-    <h3>Dodaj nowe konto e-mail</h3>
-    <form id="add-email-form" method="post" action="/add_email_account">
-      <div class="form-group">
-        <label for="email_address">Adres e-mail:</label>
-        <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h3>Dodaj nowe konto e-mail</h3>
+        <form id="add-email-form" method="post" action="/add_email_account">
+          <div class="form-group">
+            <label for="email_address">Adres e-mail:</label>
+            <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
+          </div>
+          <button type="submit">Dodaj konto</button>
+        </form>
+        <div id="add-email-messages"></div>
       </div>
-      <button type="submit">Dodaj konto</button>
-    </form>
-
-    <div id="add-email-messages"></div>
+      <div>
+        <a href="/logout" class="logout-button">Wyloguj się</a>
+      </div>
+    </div>
   </div>
 
   <!-- Taby wyboru kont email -->
@@ -792,7 +815,7 @@
         
         try {
           const response = await fetch('/api/add_email_account', {
-            method: 'POST',
+            method: 'POST', 
             body: formData
           });
           

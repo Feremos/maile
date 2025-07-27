@@ -607,19 +607,18 @@
       showLoading();
       
       try {
-        let url = '/';
         const params = new URLSearchParams();
         
+        // Dodaj parametry do URL
         if (currentState.activeCategory) {
-          url = `/category/${encodeURIComponent(currentState.activeCategory)}`;
-        } else if (currentState.activeCategory === 'archiwum') {
-          url = '/archiwum';
+          params.set('category', currentState.activeCategory);
         }
-        
         if (currentState.selectedEmail) {
           params.set('selected_email', currentState.selectedEmail);
         }
         
+        // Użyj API endpoint
+        let url = '/api/emails';
         if (params.toString()) {
           url += '?' + params.toString();
         }
@@ -631,7 +630,7 @@
         });
         
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
@@ -654,7 +653,7 @@
         
       } catch (error) {
         console.error('Error loading emails:', error);
-        showMessage('Błąd podczas ładowania emaili', 'error');
+        showMessage('Błąd podczas ładowania emaili: ' + error.message, 'error');
       } finally {
         hideLoading();
       }
@@ -792,22 +791,19 @@
         button.textContent = 'Dodawanie...';
         
         try {
-          const response = await fetch('/add_email_account', {
+          const response = await fetch('/api/add_email_account', {
             method: 'POST',
             body: formData
           });
           
           if (response.ok) {
-            const result = await response.text();
-            if (result.includes('dodany')) {
-              showAddEmailMessage('Adres został dodany pomyślnie!');
-              e.target.reset();
-              loadEmails(); // Odśwież dane
-            } else {
-              showAddEmailMessage('Błąd: ' + result, 'error');
-            }
+            const result = await response.json();
+            showAddEmailMessage(result.message);
+            e.target.reset();
+            loadEmails(); // Odśwież dane
           } else {
-            showAddEmailMessage('Błąd podczas dodawania adresu', 'error');
+            const error = await response.json();
+            showAddEmailMessage(error.detail, 'error');
           }
         } catch (error) {
           showAddEmailMessage('Błąd połączenia', 'error');

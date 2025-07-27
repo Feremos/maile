@@ -76,74 +76,6 @@
       text-decoration: none;
     }
 
-    /* Styl dla sekcji oczekujących emaili */
-    .pending-emails-section {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .pending-emails-section h3 {
-      color: #856404;
-      margin-bottom: 1rem;
-      text-align: center;
-    }
-
-    .pending-email-item {
-      background: #fff;
-      border: 1px solid #ffeaa7;
-      border-radius: 4px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .pending-email-info {
-      flex: 1;
-    }
-
-    .pending-email-subject {
-      font-weight: bold;
-      color: #856404;
-      margin-bottom: 0.5rem;
-    }
-
-    .pending-email-time {
-      font-size: 0.9rem;
-      color: #6c757d;
-    }
-
-    .pending-email-reply {
-      font-size: 0.9rem;
-      color: #495057;
-      margin-top: 0.5rem;
-      font-style: italic;
-    }
-
-    .cancel-button {
-      background: #dc3545;
-      color: white;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: background-color 0.2s;
-    }
-
-    .cancel-button:hover {
-      background: #c82333;
-      text-decoration: none;
-      color: white;
-    }
-
     .email-card {
       background: var(--background-alt);
       border: 1px solid var(--border);
@@ -259,6 +191,55 @@
       margin-bottom: 1rem;
     }
 
+    /* Styl dla sekcji z timerem */
+    .pending-reply-section {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-top: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .pending-reply-info {
+      flex: 1;
+    }
+
+    .pending-reply-timer {
+      font-weight: bold;
+      color: #856404;
+      font-size: 1.1rem;
+    }
+
+    .pending-reply-text {
+      font-size: 0.9rem;
+      color: #6c757d;
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+
+    .cancel-reply-button {
+      background: #dc3545;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: background-color 0.2s;
+    }
+
+    .cancel-reply-button:hover {
+      background: #c82333;
+      text-decoration: none;
+      color: white;
+    }
+
     .message {
       text-align: center;
       padding: 1rem;
@@ -331,7 +312,7 @@
         text-align: center;
       }
 
-      .pending-email-item {
+      .pending-reply-section {
         flex-direction: column;
         align-items: flex-start;
       }
@@ -360,34 +341,6 @@
       <div class="message success">{{ add_email_message }}</div>
     {% endif %}
   </div>
-
-  <!-- Sekcja oczekujących emaili -->
-  {% if pending_emails %}
-  <div class="pending-emails-section">
-    <h3>⏰ Emaile zaplanowane do wysłania</h3>
-    {% for scheduled_email in pending_emails %}
-    <div class="pending-email-item">
-      <div class="pending-email-info">
-        <div class="pending-email-subject">
-          {{ scheduled_email.email.subject }}
-        </div>
-        <div class="pending-email-time">
-          Wysłanie za: <span id="countdown-{{ scheduled_email.id }}"></span>
-        </div>
-        <div class="pending-email-reply">
-          "{{ scheduled_email.reply_text[:100] }}{% if scheduled_email.reply_text|length > 100 %}...{% endif %}"
-        </div>
-      </div>
-      <form method="post" action="/cancel_reply/{{ scheduled_email.id }}" style="margin: 0;">
-        <button type="submit" class="cancel-button" 
-                onclick="return confirm('Czy na pewno chcesz anulować wysłanie tego emaila?')">
-          Anuluj wysłanie
-        </button>
-      </form>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
 
   <!-- Taby wyboru kont email -->
   <div class="email-accounts-tabs">
@@ -497,12 +450,36 @@
         {% endif %}
 
         <div class="reply-section">
-          <form method="post" action="/reply">
-            <input type="hidden" name="email_id" value="{{ email.id }}">
-            <h4>Odpowiedź na wiadomość</h4>
-            <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
-            <button type="submit">Zaplanuj odpowiedź (wyśle się za 5 min)</button>
-          </form>
+          <!-- Sprawdź czy dla tego emaila jest zaplanowana odpowiedź -->
+          {% set pending_for_email = pending_emails | selectattr("email_id", "equalto", email.id) | first %}
+          
+          {% if pending_for_email %}
+            <!-- Pokaż timer z możliwością anulowania -->
+            <div class="pending-reply-section">
+              <div class="pending-reply-info">
+                <div class="pending-reply-timer">
+                  ⏰ Odpowiedź zostanie wysłana za: <span id="countdown-{{ pending_for_email.id }}"></span>
+                </div>
+                <div class="pending-reply-text">
+                  "{{ pending_for_email.reply_text[:100] }}{% if pending_for_email.reply_text|length > 100 %}...{% endif %}"
+                </div>
+              </div>
+              <form method="post" action="/cancel_reply/{{ pending_for_email.id }}" style="margin: 0;">
+                <button type="submit" class="cancel-reply-button" 
+                        onclick="return confirm('Czy na pewno chcesz anulować wysłanie tego emaila?')">
+                  Anuluj wysłanie
+                </button>
+              </form>
+            </div>
+          {% else %}
+            <!-- Pokaż normalny formularz odpowiedzi -->
+            <form method="post" action="/reply">
+              <input type="hidden" name="email_id" value="{{ email.id }}">
+              <h4>Odpowiedź na wiadomość</h4>
+              <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
+              <button type="submit">Zaplanuj odpowiedź (wyśle się za 5 min)</button>
+            </form>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -558,6 +535,8 @@
             countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
           } else {
             countdownElement.textContent = 'Wysyłanie...';
+            // Opcjonalnie: odśwież stronę po zakończeniu odliczania
+            setTimeout(() => location.reload(), 2000);
           }
         }
       })();

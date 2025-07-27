@@ -366,7 +366,7 @@ async def add_email_account_api(
 
     return JSONResponse({"status": "success", "message": f"Adres {email_address} został dodany."})
 
-# ===== ZACHOWANE ORYGINALNE ENDPOINTY HTML =====
+# ===== ZACHOWANE ORYGINALNE ENDPOINTY HTML - POPRAWIONE =====
 
 @app.get("/category/{category_name}", response_class=HTMLResponse)
 async def read_emails_by_category(
@@ -376,7 +376,8 @@ async def read_emails_by_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    return get_emails_api(request, category_name, selected_email, db, current_user)
+    # Wywołaj bezpośrednio funkcję HTML zamiast API
+    return await get_emails_html(request, category_name, selected_email, db, current_user)
 
 @app.get("/archiwum", response_class=HTMLResponse)
 async def read_archived_emails(
@@ -384,7 +385,8 @@ async def read_archived_emails(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    return get_emails_api(request, "archiwum", None, db, current_user)
+    # Wywołaj bezpośrednio funkcję HTML zamiast API
+    return await get_emails_html(request, "archiwum", None, db, current_user)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_emails(
@@ -393,18 +395,19 @@ async def read_emails(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    return get_emails_api(request, None, selected_email, db, current_user)
+    # Wywołaj bezpośrednio funkcję HTML zamiast API
+    return await get_emails_html(request, None, selected_email, db, current_user)
 
 # Zachowane stare endpointy dla kompatybilności
 @app.post("/add_email_account", response_class=HTMLResponse)
-def add_email_account(
+async def add_email_account(
     request: Request,
     email_address: str = Form(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie),
 ):
     try:
-        result = add_email_account_api(email_address, db, current_user)
+        await add_email_account_api(email_address, db, current_user)
         return templates.TemplateResponse("index.html", {
             "request": request,
             "emails": get_emails_for_user(db, current_user),
@@ -457,7 +460,7 @@ async def receive_email(
     return {"status": "ok", "id": email.id}
 
 @app.post("/reply")
-def schedule_reply(
+async def schedule_reply(
     background_tasks: BackgroundTasks,
     email_id: int = Form(...), 
     reply_text: str = Form(...), 
@@ -465,25 +468,25 @@ def schedule_reply(
     current_user: User = Depends(get_current_user_from_cookie)
 ):
     try:
-        schedule_reply_api(background_tasks, email_id, reply_text, db, current_user)
+        await schedule_reply_api(background_tasks, email_id, reply_text, db, current_user)
         return RedirectResponse(url="/", status_code=302)
     except HTTPException:
         return RedirectResponse(url="/", status_code=302)
 
 @app.post("/cancel_reply/{scheduled_email_id}")
-def cancel_reply(
+async def cancel_reply(
     scheduled_email_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
     try:
-        cancel_reply_api(scheduled_email_id, db, current_user)
+        await cancel_reply_api(scheduled_email_id, db, current_user)
     except HTTPException:
         pass
     return RedirectResponse(url="/", status_code=302)
 
 @app.get("/pending_emails")
-def get_pending_emails_api_old(
+async def get_pending_emails_api_old(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):

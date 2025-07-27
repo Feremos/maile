@@ -492,6 +492,52 @@
   </div>
 
   <script>
+    // === ZARZĄDZANIE POZYCJĄ SCROLLA ===
+    
+    // Zapisz pozycję scrolla przed zmianą strony
+    function saveScrollPosition() {
+      sessionStorage.setItem('scrollPosition', window.scrollY.toString());
+    }
+
+    // Przywróć pozycję scrolla po załadowaniu strony
+    function restoreScrollPosition() {
+      const savedPosition = sessionStorage.getItem('scrollPosition');
+      if (savedPosition) {
+        // Użyj setTimeout, żeby upewnić się, że strona jest w pełni załadowana
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(savedPosition, 10));
+          // Wyczyść zapisaną pozycję, żeby nie wpływała na inne strony
+          sessionStorage.removeItem('scrollPosition');
+        }, 100);
+      }
+    }
+
+    // Zapisuj pozycję scrolla przy kliknięciu w linki kategorii/kont
+    function setupScrollSaving() {
+      // Linki kategorii i kont email
+      document.querySelectorAll('.account-tab, .tab-link').forEach(link => {
+        link.addEventListener('click', saveScrollPosition);
+      });
+
+      // Formularze odpowiedzi
+      document.querySelectorAll('form[action="/reply"]').forEach(form => {
+        form.addEventListener('submit', saveScrollPosition);
+      });
+
+      // Formularze anulowania odpowiedzi
+      document.querySelectorAll('form[action^="/cancel_reply/"]').forEach(form => {
+        form.addEventListener('submit', saveScrollPosition);
+      });
+
+      // Formularz dodawania konta email
+      const addEmailForm = document.querySelector('form[action="/add_email_account"]');
+      if (addEmailForm) {
+        addEmailForm.addEventListener('submit', saveScrollPosition);
+      }
+    }
+
+    // === POZOSTAŁE FUNKCJE ===
+
     // Funkcja do liczenia słów
     function countWords(text) {
       return text.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -535,7 +581,8 @@
             countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
           } else {
             countdownElement.textContent = 'Wysyłanie...';
-            // Opcjonalnie: odśwież stronę po zakończeniu odliczania
+            // Zapisz pozycję przed odświeżeniem
+            saveScrollPosition();
             setTimeout(() => location.reload(), 2000);
           }
         }
@@ -544,15 +591,28 @@
       {% endif %}
     }
 
+    // === INICJALIZACJA ===
+    
     // Uruchom po załadowaniu strony
     document.addEventListener('DOMContentLoaded', function() {
+      // Przywróć pozycję scrolla
+      restoreScrollPosition();
+      
+      // Skonfiguruj zapisywanie pozycji scrolla
+      setupScrollSaving();
+      
+      // Pozostałe funkcje
       toggleSummaries();
       updateCountdowns();
+      
       // Aktualizuj odliczanie co sekundę
       setInterval(updateCountdowns, 1000);
     });
 
-    // Smooth scroll dla linków
+    // Zapisz pozycję przed opuszczeniem strony (backup)
+    window.addEventListener('beforeunload', saveScrollPosition);
+
+    // Smooth scroll dla linków - zachowane bez zmian
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function (e) {
         e.preventDefault();
@@ -562,7 +622,7 @@
       });
     });
 
-    // Auto-resize dla textarea
+    // Auto-resize dla textarea - zachowane bez zmian
     document.querySelectorAll('textarea').forEach(textarea => {
       textarea.addEventListener('input', function() {
         this.style.height = 'auto';

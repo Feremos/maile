@@ -5,7 +5,7 @@ import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Cookie, BackgroundTasks
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -32,8 +32,6 @@ if not SECRET_KEY or not FERNET_KEY:
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 fernet = Fernet(FERNET_KEY.encode())
-
-
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -79,16 +77,26 @@ def extract_email(full: str):
     match = re.search(r'<([^>]+)>', full)
     return match.group(1) if match else full.strip()
 
-def get_emails_for_user(db: Session, user: User):
+def get_emails_for_user(db: Session, user: User, category: str = None, selected_email: str = None):
     visible_addresses = [cred.email for cred in user.selected_gmail_credentials]
     if not visible_addresses:
         return []
-    return (
-        db.query(Email)
-        .filter(Email.sent_to.in_(visible_addresses), Email.is_archived == False)
-        .order_by(Email.received_at.desc())
-        .all()
-    )
+    
+    query = db.query(Email).filter(Email.sent_to.in_(visible_addresses))
+    
+    # Filtruj po kategorii
+    if category == "archiwum":
+        query = query.filter(Email.is_archived == True)
+    elif category:
+        query = query.filter(Email.classification == category, Email.is_archived == False)
+    else:
+        query = query.filter(Email.is_archived == False)
+    
+    # Filtruj po wybranym emailu
+    if selected_email and selected_email in visible_addresses:
+        query = query.filter(Email.sent_to == selected_email)
+    
+    return query.order_by(Email.received_at.desc()).all()
 
 def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
     if not user_email:
@@ -200,7 +208,165 @@ async def startup_event():
     """Uruchom background task przy starcie aplikacji"""
     asyncio.create_task(check_and_send_pending_emails())
 
-from fastapi import Path
+# ===== NOWE API ENDPOINTY =====
+
+@app.get("/api/emails")
+async def get_emails_api(
+    request: Request,
+    category: Optional[str] = Query(None),
+    selected_email: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """API endpoint do pobierania emaili w formacie JSON"""
+    
+    # Sprawdź czy request oczekuje JSON
+    accept_header = request.headers.get("accept", "")
+    if "application/json" not in accept_header:
+        # Jeśli nie, przekieruj do zwykłego endpointu HTML
+        return await get_emails_html(request, category, selected_email, db, current_user)
+    
+    emails = get_emails_for_user(db, current_user, category, selected_email)
+    pending_emails = get_pending_emails_for_user(db, current_user)
+    
+    # Konwertuj emaile do formatu JSON
+    emails_json = []
+    for email in emails:
+        emails_json.append({
+            "id": email.id,
+            "sent_from": email.sent_from,
+            "sent_to": email.sent_to,
+            "subject": email.subject,
+            "content": email.content,
+            "summary": email.summary,
+            "classification": email.classification,
+            "suggested_reply": email.suggested_reply,
+            "received_at": email.received_at.isoformat() if email.received_at else None,
+            "is_archived": email.is_archived
+        })
+    
+    # Konwertuj oczekujące emaile do formatu JSON
+    pending_json = []
+    for pe in pending_emails:
+        pending_json.append({
+            "id": pe.id,
+            "email_id": pe.email_id,
+            "reply_text": pe.reply_text,
+            "scheduled_time": pe.scheduled_time.isoformat(),
+            "status": pe.status
+        })
+    
+    return JSONResponse({
+        "emails": emails_json,
+        "userVisibleEmails": [cred.email for cred in current_user.selected_gmail_credentials],
+        "pendingEmails": pending_json,
+        "activeCategory": category or "",
+        "selectedEmail": selected_email or ""
+    })
+
+async def get_emails_html(
+    request: Request,
+    category: Optional[str] = None,
+    selected_email: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """Funkcja pomocnicza do renderowania HTML (dla pierwszego załadowania)"""
+    emails = get_emails_for_user(db, current_user, category, selected_email)
+    pending_emails = get_pending_emails_for_user(db, current_user)
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "emails": emails,
+        "user": current_user,
+        "user_visible_emails": [cred.email for cred in current_user.selected_gmail_credentials],
+        "active_category": category or "",
+        "selected_email": selected_email or "",
+        "pending_emails": pending_emails
+    })
+
+@app.post("/api/reply")
+async def schedule_reply_api(
+    background_tasks: BackgroundTasks,
+    email_id: int = Form(...), 
+    reply_text: str = Form(...), 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """API endpoint do planowania odpowiedzi"""
+    email = db.query(Email).filter(Email.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
+    
+    # Sprawdź czy użytkownik ma dostęp do tego emaila
+    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+    if email.sent_to not in visible_addresses:
+        raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
+    
+    # Zapisz zaplanowany email w bazie danych
+    scheduled_email = ScheduledEmail(
+        email_id=email_id,
+        reply_text=reply_text,
+        scheduled_time=datetime.datetime.utcnow() + datetime.timedelta(minutes=5),
+        status=EmailStatus.PENDING
+    )
+    db.add(scheduled_email)
+    db.commit()
+    db.refresh(scheduled_email)
+    
+    # Zaplanuj wysłanie emaila w tle
+    background_tasks.add_task(send_delayed_email, scheduled_email.id, 5)
+    
+    return JSONResponse({"status": "success", "message": "Odpowiedź została zaplanowana"})
+
+@app.post("/api/cancel_reply/{scheduled_email_id}")
+async def cancel_reply_api(
+    scheduled_email_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """API endpoint do anulowania odpowiedzi"""
+    scheduled_email = db.query(ScheduledEmail).filter(ScheduledEmail.id == scheduled_email_id).first()
+    
+    if not scheduled_email:
+        raise HTTPException(status_code=404, detail="Zaplanowany email nie znaleziony")
+    
+    # Sprawdź czy użytkownik ma dostęp do tego emaila
+    email = db.query(Email).filter(Email.id == scheduled_email.email_id).first()
+    if email:
+        visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+        if email.sent_to not in visible_addresses:
+            raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
+    
+    if scheduled_email.status == EmailStatus.PENDING:
+        scheduled_email.status = EmailStatus.CANCELLED
+        db.commit()
+        return JSONResponse({"status": "success", "message": "Wysłanie emaila zostało anulowane"})
+    else:
+        raise HTTPException(status_code=400, detail="Nie można anulować tego emaila")
+
+@app.post("/api/add_email_account")
+async def add_email_account_api(
+    email_address: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie),
+):
+    """API endpoint do dodawania konta email"""
+    email_address = email_address.strip().lower()
+
+    credential = db.query(GmailCredentials).filter_by(email=email_address).first()
+    if not credential:
+        raise HTTPException(status_code=400, detail=f"Adres {email_address} nie istnieje w gmail_credentials.")
+
+    if credential in current_user.selected_gmail_credentials:
+        raise HTTPException(status_code=400, detail=f"Adres {email_address} już jest dodany.")
+
+    current_user.selected_gmail_credentials.append(credential)
+    db.commit()
+
+    return JSONResponse({"status": "success", "message": f"Adres {email_address} został dodany."})
+
+# ===== ZACHOWANE ORYGINALNE ENDPOINTY HTML =====
 
 @app.get("/category/{category_name}", response_class=HTMLResponse)
 def read_emails_by_category(
@@ -210,32 +376,7 @@ def read_emails_by_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
-
-    # Jeśli wybrano konkretny email i jest on w widocznych
-    if selected_email and selected_email not in visible_addresses:
-        emails = []
-    else:
-        query = db.query(Email).filter(
-            Email.sent_to.in_(visible_addresses),
-            Email.classification == category_name,
-            Email.is_archived == False,
-        )
-        if selected_email:
-            query = query.filter(Email.sent_to == selected_email)
-        emails = query.order_by(Email.received_at.desc()).all()
-
-    pending_emails = get_pending_emails_for_user(db, current_user)
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "user_visible_emails": visible_addresses,
-        "active_category": category_name,
-        "selected_email": selected_email,
-        "pending_emails": pending_emails
-    })
+    return get_emails_api(request, category_name, selected_email, db, current_user)
 
 @app.get("/archiwum", response_class=HTMLResponse)
 def read_archived_emails(
@@ -243,32 +384,7 @@ def read_archived_emails(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
-    if not visible_addresses:
-        emails = []
-    else:
-        emails = (
-            db.query(Email)
-            .filter(
-                Email.sent_to.in_(visible_addresses),
-                Email.is_archived == True,
-            )
-            .order_by(Email.received_at.desc())
-            .all()
-        )
-    
-    pending_emails = get_pending_emails_for_user(db, current_user)
-    
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "user_visible_emails": visible_addresses,
-        "active_category": "archiwum",
-        "pending_emails": pending_emails
-    })
-
-from fastapi import Query
+    return get_emails_api(request, "archiwum", None, db, current_user)
 
 @app.get("/", response_class=HTMLResponse)
 def read_emails(
@@ -277,38 +393,9 @@ def read_emails(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    visible_emails = [cred.email for cred in current_user.selected_gmail_credentials]
+    return get_emails_api(request, None, selected_email, db, current_user)
 
-    if selected_email:
-        if selected_email in visible_emails:
-            emails = (
-                db.query(Email)
-                .filter(Email.sent_to == selected_email, Email.is_archived == False)
-                .order_by(Email.received_at.desc())
-                .all()
-            )
-        else:
-            # Jeśli ktoś wpisze email spoza listy – zwróć nic
-            emails = []
-    else:
-        emails = (
-            db.query(Email)
-            .filter(Email.sent_to.in_(visible_emails), Email.is_archived == False)
-            .order_by(Email.received_at.desc())
-            .all()
-        )
-
-    pending_emails = get_pending_emails_for_user(db, current_user)
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": emails,
-        "user": current_user,
-        "user_visible_emails": visible_emails,
-        "selected_email": selected_email,
-        "pending_emails": pending_emails
-    })
-
+# Zachowane stare endpointy dla kompatybilności
 @app.post("/add_email_account", response_class=HTMLResponse)
 def add_email_account(
     request: Request,
@@ -316,40 +403,25 @@ def add_email_account(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie),
 ):
-    email_address = email_address.strip().lower()
-
-    credential = db.query(GmailCredentials).filter_by(email=email_address).first()
-    if not credential:
+    try:
+        result = add_email_account_api(email_address, db, current_user)
         return templates.TemplateResponse("index.html", {
             "request": request,
             "emails": get_emails_for_user(db, current_user),
             "user": current_user,
             "user_visible_emails": [c.email for c in current_user.selected_gmail_credentials],
-            "add_email_error": f"Adres {email_address} nie istnieje w gmail_credentials.",
+            "add_email_message": f"Adres {email_address} został dodany.",
             "pending_emails": get_pending_emails_for_user(db, current_user)
         })
-
-    if credential in current_user.selected_gmail_credentials:
+    except HTTPException as e:
         return templates.TemplateResponse("index.html", {
             "request": request,
             "emails": get_emails_for_user(db, current_user),
             "user": current_user,
             "user_visible_emails": [c.email for c in current_user.selected_gmail_credentials],
-            "add_email_error": f"Adres {email_address} już jest dodany.",
+            "add_email_error": e.detail,
             "pending_emails": get_pending_emails_for_user(db, current_user)
         })
-
-    current_user.selected_gmail_credentials.append(credential)
-    db.commit()
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "emails": get_emails_for_user(db, current_user),
-        "user": current_user,
-        "user_visible_emails": [c.email for c in current_user.selected_gmail_credentials],
-        "add_email_message": f"Adres {email_address} został dodany.",
-        "pending_emails": get_pending_emails_for_user(db, current_user)
-    })
 
 @app.post("/webhook")
 async def receive_email(
@@ -384,44 +456,6 @@ async def receive_email(
     db.refresh(email)
     return {"status": "ok", "id": email.id}
 
-@app.get("/api/emails")
-def get_emails_api(
-    category: Optional[str] = None,
-    selected_email: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie)
-):
-    # Tutaj logika pobierania emaili
-    emails = get_emails_for_user(db, current_user)  # Twoja logika
-    pending_emails = get_pending_emails_for_user(db, current_user)
-    
-    return {
-        "emails": [
-            {
-                "id": email.id,
-                "sent_from": email.sent_from,
-                "sent_to": email.sent_to,
-                "subject": email.subject,
-                "content": email.content,
-                "summary": email.summary,
-                "classification": email.classification,
-                "suggested_reply": email.suggested_reply,
-                "received_at": email.received_at.isoformat() if email.received_at else None
-            }
-            for email in emails
-        ],
-        "userVisibleEmails": [cred.email for cred in current_user.selected_gmail_credentials],
-        "pendingEmails": [
-            {
-                "id": pe.id,
-                "email_id": pe.email_id,
-                "reply_text": pe.reply_text,
-                "scheduled_time": pe.scheduled_time.isoformat()
-            }
-            for pe in pending_emails
-        ]
-    }
-    
 @app.post("/reply")
 def schedule_reply(
     background_tasks: BackgroundTasks,
@@ -430,25 +464,11 @@ def schedule_reply(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    email = db.query(Email).filter(Email.id == email_id).first()
-    if not email:
-        raise HTTPException(status_code=404, detail="Email nie znaleziony")
-    
-    # Zapisz zaplanowany email w bazie danych
-    scheduled_email = ScheduledEmail(
-        email_id=email_id,
-        reply_text=reply_text,
-        scheduled_time=datetime.datetime.utcnow() + datetime.timedelta(minutes=5),
-        status=EmailStatus.PENDING
-    )
-    db.add(scheduled_email)
-    db.commit()
-    db.refresh(scheduled_email)
-    
-    # Zaplanuj wysłanie emaila w tle
-    background_tasks.add_task(send_delayed_email, scheduled_email.id, 5)
-    
-    return RedirectResponse(url="/", status_code=302)
+    try:
+        schedule_reply_api(background_tasks, email_id, reply_text, db, current_user)
+        return RedirectResponse(url="/", status_code=302)
+    except HTTPException:
+        return RedirectResponse(url="/", status_code=302)
 
 @app.post("/cancel_reply/{scheduled_email_id}")
 def cancel_reply(
@@ -456,15 +476,14 @@ def cancel_reply(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    scheduled_email = db.query(ScheduledEmail).filter(ScheduledEmail.id == scheduled_email_id).first()
-    if scheduled_email and scheduled_email.status == EmailStatus.PENDING:
-        scheduled_email.status = EmailStatus.CANCELLED
-        db.commit()
-    
+    try:
+        cancel_reply_api(scheduled_email_id, db, current_user)
+    except HTTPException:
+        pass
     return RedirectResponse(url="/", status_code=302)
 
 @app.get("/pending_emails")
-def get_pending_emails_api(
+def get_pending_emails_api_old(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):

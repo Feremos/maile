@@ -369,7 +369,7 @@ async def add_email_account_api(
 # ===== ZACHOWANE ORYGINALNE ENDPOINTY HTML =====
 
 @app.get("/category/{category_name}", response_class=HTMLResponse)
-def read_emails_by_category(
+async def read_emails_by_category(
     category_name: str,
     request: Request,
     selected_email: Optional[str] = Query(None),
@@ -379,7 +379,7 @@ def read_emails_by_category(
     return get_emails_api(request, category_name, selected_email, db, current_user)
 
 @app.get("/archiwum", response_class=HTMLResponse)
-def read_archived_emails(
+async def read_archived_emails(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
@@ -387,7 +387,7 @@ def read_archived_emails(
     return get_emails_api(request, "archiwum", None, db, current_user)
 
 @app.get("/", response_class=HTMLResponse)
-def read_emails(
+async def read_emails(
     request: Request,
     selected_email: Optional[str] = None,
     db: Session = Depends(get_db),

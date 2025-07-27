@@ -65,6 +65,7 @@
       border: 1px solid var(--border);
       border-radius: 4px;
       transition: all 0.2s ease;
+      cursor: pointer;
     }
 
     .account-tab:hover,
@@ -265,30 +266,26 @@
       color: var(--text-muted);
     }
 
-    .stats-bar {
-      display: flex;
-      justify-content: center;
-      gap: 2rem;
-      margin: 2rem 0;
-      padding: 1rem;
-      background: var(--background-alt);
-      border-radius: 4px;
-      flex-wrap: wrap;
-    }
-
-    .stat-item {
+    /* Loading spinner */
+    .loading-spinner {
+      display: none;
       text-align: center;
+      padding: 2rem;
     }
 
-    .stat-number {
-      font-size: 1.5rem;
-      font-weight: bold;
-      display: block;
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--button-base);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
     }
 
-    .stat-label {
-      font-size: 0.9rem;
-      color: var(--text-muted);
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* Responsywność */
@@ -326,7 +323,7 @@
 
   <div class="controls-section">
     <h3>Dodaj nowe konto e-mail</h3>
-    <form method="post" action="/add_email_account">
+    <form id="add-email-form" method="post" action="/add_email_account">
       <div class="form-group">
         <label for="email_address">Adres e-mail:</label>
         <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
@@ -334,216 +331,425 @@
       <button type="submit">Dodaj konto</button>
     </form>
 
-    {% if add_email_error %}
-      <div class="message error">{{ add_email_error }}</div>
-    {% endif %}
-    {% if add_email_message %}
-      <div class="message success">{{ add_email_message }}</div>
-    {% endif %}
+    <div id="add-email-messages"></div>
   </div>
 
   <!-- Taby wyboru kont email -->
   <div class="email-accounts-tabs">
     <h3>📧 Wybierz konto e-mail</h3>
-    <div class="tabs-container">
-      <a href="/{% if active_category %}category/{{ active_category }}{% endif %}" 
-         class="account-tab {% if not selected_email %}active{% endif %}">
+    <div class="tabs-container" id="email-accounts-container">
+      <div class="account-tab active" data-email="" data-category="">
         Wszystkie konta
-      </a>
-      {% for email in user_visible_emails %}
-        <a href="/{% if active_category %}category/{{ active_category }}{% endif %}?selected_email={{ email | urlencode }}" 
-           class="account-tab {% if email == selected_email %}active{% endif %}"
-           title="{{ email }}">
-        {{ email }}
-        </a>
-      {% endfor %}
+      </div>
+      <!-- Dynamically populated -->
     </div>
   </div>
 
   <!-- Taby kategorii -->
   <div class="category-tabs">
     <h3>Kategorie wiadomości</h3>
-    <div class="tabs-container">
-      <a href="/{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if not active_category %}active{% endif %}">
+    <div class="tabs-container" id="categories-container">
+      <div class="tab-link active" data-category="" data-email="">
         Wszystkie
-      </a>
-      <a href="/category/faktura{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if active_category == 'faktura' %}active{% endif %}">
+      </div>
+      <div class="tab-link" data-category="faktura" data-email="">
         Faktury
-      </a>
-      <a href="/category/reklamacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if active_category == 'reklamacja' %}active{% endif %}">
+      </div>
+      <div class="tab-link" data-category="reklamacja" data-email="">
         Reklamacje
-      </a>
-      <a href="/category/oferta{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if active_category == 'oferta' %}active{% endif %}">
+      </div>
+      <div class="tab-link" data-category="oferta" data-email="">
         Oferty
-      </a>
-      <a href="/category/rezygnacja{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if active_category == 'rezygnacja' %}active{% endif %}">
+      </div>
+      <div class="tab-link" data-category="rezygnacja" data-email="">
         Rezygnacje
-      </a>
-      <a href="/category/brak%20klasyfikacji{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if active_category == 'brak klasyfikacji' %}active{% endif %}">
+      </div>
+      <div class="tab-link" data-category="brak klasyfikacji" data-email="">
         Inne
-      </a>
-      <a href="/archiwum{% if selected_email %}?selected_email={{ selected_email | urlencode }}{% endif %}" 
-         class="tab-link {% if active_category == 'archiwum' %}active{% endif %}">
+      </div>
+      <div class="tab-link" data-category="archiwum" data-email="">
         Archiwum
-      </a>
+      </div>
     </div>
   </div>
 
-  {% if error %}
-    <div class="message error">{{ error }}</div>
-  {% endif %}
-  {% if message %}
-    <div class="message success">{{ message }}</div>
-  {% endif %}
+  <div id="messages-container"></div>
 
-  <div class="emails-section">
-    {% for email in emails %}
-    <div class="email-card">
-      <div class="email-header">
-        <div class="email-meta">
-          <div class="email-meta-item">
-            <span class="email-meta-label">Od:</span>
-            <span>{{email.sent_from}}</span>
-          </div>
-          <div class="email-meta-item">
-            <span class="email-meta-label">Do:</span>
-            <span>{{email.sent_to}}</span>
-          </div>
-        </div>
-        
-        <div class="email-subject">
-          <span class="email-meta-label">Temat:</span>
-          <span>{{email.subject}}</span>
-        </div>
+  <div class="loading-spinner" id="loading-spinner">
+    <div class="spinner"></div>
+    <p>Ładowanie...</p>
+  </div>
 
-        <div class="classification-date-row">
-          <div class="classification-badge">
-            {{ email.classification }}
-          </div>
-
-          <div class="email-date">
-            Odebrano: 
-            {% if email.received_at %}
-              {{ email.received_at.strftime('%d.%m.%Y o %H:%M') }}
-            {% else %}
-              brak daty
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <div class="email-body">
-        <div class="email-body-header">Treść wiadomości:</div>
-        <div class="email-content">{{ email.content }}</div>
-        
-        {% if email.summary %}
-        <div class="email-summary" id="summary-{{ email.id }}" style="display: none;">
-          <strong>Streszczenie:</strong>
-          <div class="email-summary-content">{{ email.summary }}</div>
-        </div>
-        {% endif %}
-
-        <div class="reply-section">
-          <!-- Sprawdź czy dla tego emaila jest zaplanowana odpowiedź -->
-          {% set pending_for_email = pending_emails | selectattr("email_id", "equalto", email.id) | first %}
-          
-          {% if pending_for_email %}
-            <!-- Pokaż timer z możliwością anulowania -->
-            <div class="pending-reply-section">
-              <div class="pending-reply-info">
-                <div class="pending-reply-timer">
-                  ⏰ Odpowiedź zostanie wysłana za: <span id="countdown-{{ pending_for_email.id }}"></span>
-                </div>
-                <div class="pending-reply-text">
-                  "{{ pending_for_email.reply_text[:100] }}{% if pending_for_email.reply_text|length > 100 %}...{% endif %}"
-                </div>
-              </div>
-              <form method="post" action="/cancel_reply/{{ pending_for_email.id }}" style="margin: 0;">
-                <button type="submit" class="cancel-reply-button" 
-                        onclick="return confirm('Czy na pewno chcesz anulować wysłanie tego emaila?')">
-                  Anuluj wysłanie
-                </button>
-              </form>
-            </div>
-          {% else %}
-            <!-- Pokaż normalny formularz odpowiedzi -->
-            <form method="post" action="/reply">
-              <input type="hidden" name="email_id" value="{{ email.id }}">
-              <h4>Odpowiedź na wiadomość</h4>
-              <textarea name="reply_text" id="reply_{{ email.id }}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">{{ email.suggested_reply }}</textarea>
-              <button type="submit">Zaplanuj odpowiedź (wyśle się za 5 min)</button>
-            </form>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% else %}
-      <div class="no-emails">
-        <p>Brak wiadomości do wyświetlenia</p>
-        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdź inne kategorie lub dodaj nowe konto e-mail</p>
-      </div>
-    {% endfor %}
+  <div class="emails-section" id="emails-container">
+    <!-- Dynamically populated -->
   </div>
 
   <script>
-    // === ZARZĄDZANIE POZYCJĄ SCROLLA ===
+    // === GLOBALNE ZMIENNE ===
+    let currentState = {
+      selectedEmail: '',
+      activeCategory: '',
+      userVisibleEmails: [],
+      pendingEmails: [],
+      countdownIntervals: new Map()
+    };
+
+    // === FUNKCJE POMOCNICZE ===
     
-    // Zapisz pozycję scrolla przed zmianą strony
-    function saveScrollPosition() {
-      sessionStorage.setItem('scrollPosition', window.scrollY.toString());
+    function showLoading() {
+      document.getElementById('loading-spinner').style.display = 'block';
+      document.getElementById('emails-container').style.opacity = '0.5';
     }
 
-    // Przywróć pozycję scrolla po załadowaniu strony
-    function restoreScrollPosition() {
-      const savedPosition = sessionStorage.getItem('scrollPosition');
-      if (savedPosition) {
-        // Użyj setTimeout, żeby upewnić się, że strona jest w pełni załadowana
-        setTimeout(() => {
-          window.scrollTo(0, parseInt(savedPosition, 10));
-          // Wyczyść zapisaną pozycję, żeby nie wpływała na inne strony
-          sessionStorage.removeItem('scrollPosition');
-        }, 100);
+    function hideLoading() {
+      document.getElementById('loading-spinner').style.display = 'none';
+      document.getElementById('emails-container').style.opacity = '1';
+    }
+
+    function showMessage(message, type = 'success') {
+      const container = document.getElementById('messages-container');
+      container.innerHTML = `<div class="message ${type}">${message}</div>`;
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 5000);
+    }
+
+    function showAddEmailMessage(message, type = 'success') {
+      const container = document.getElementById('add-email-messages');
+      container.innerHTML = `<div class="message ${type}">${message}</div>`;
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 5000);
+    }
+
+    // === FUNKCJE AKTUALIZACJI UI ===
+
+    function updateActiveTab(container, activeValue, attribute) {
+      container.querySelectorAll('.account-tab, .tab-link').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset[attribute] === activeValue) {
+          tab.classList.add('active');
+        }
+      });
+    }
+
+    function updateEmailAccountsTabs() {
+      const container = document.getElementById('email-accounts-container');
+      container.innerHTML = `
+        <div class="account-tab ${!currentState.selectedEmail ? 'active' : ''}" data-email="" data-category="${currentState.activeCategory}">
+          Wszystkie konta
+        </div>
+      `;
+      
+      currentState.userVisibleEmails.forEach(email => {
+        container.innerHTML += `
+          <div class="account-tab ${email === currentState.selectedEmail ? 'active' : ''}" 
+               data-email="${email}" data-category="${currentState.activeCategory}" title="${email}">
+            ${email}
+          </div>
+        `;
+      });
+
+      // Dodaj event listenery
+      container.querySelectorAll('.account-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          currentState.selectedEmail = tab.dataset.email;
+          loadEmails();
+        });
+      });
+    }
+
+    function updateCategoryTabs() {
+      const container = document.getElementById('categories-container');
+      const categories = [
+        { key: '', label: 'Wszystkie' },
+        { key: 'faktura', label: 'Faktury' },
+        { key: 'reklamacja', label: 'Reklamacje' },
+        { key: 'oferta', label: 'Oferty' },
+        { key: 'rezygnacja', label: 'Rezygnacje' },
+        { key: 'brak klasyfikacji', label: 'Inne' },
+        { key: 'archiwum', label: 'Archiwum' }
+      ];
+
+      container.innerHTML = '';
+      categories.forEach(cat => {
+        container.innerHTML += `
+          <div class="tab-link ${cat.key === currentState.activeCategory ? 'active' : ''}" 
+               data-category="${cat.key}" data-email="${currentState.selectedEmail}">
+            ${cat.label}
+          </div>
+        `;
+      });
+
+      // Dodaj event listenery
+      container.querySelectorAll('.tab-link').forEach(tab => {
+        tab.addEventListener('click', () => {
+          currentState.activeCategory = tab.dataset.category;
+          loadEmails();
+        });
+      });
+    }
+
+    // === FUNKCJE ODPOWIEDZI ===
+
+    function setupReplyForms() {
+      document.querySelectorAll('form[data-action="reply"]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const formData = new FormData(form);
+          const button = form.querySelector('button[type="submit"]');
+          const originalText = button.textContent;
+          
+          button.disabled = true;
+          button.textContent = 'Wysyłanie...';
+          
+          try {
+            const response = await fetch('/reply', {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (response.ok) {
+              showMessage('Odpowiedź została zaplanowana!');
+              loadEmails(); // Odśwież emaile, żeby pokazać timer
+            } else {
+              showMessage('Błąd podczas planowania odpowiedzi', 'error');
+            }
+          } catch (error) {
+            showMessage('Błąd połączenia', 'error');
+          } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+          }
+        });
+      });
+    }
+
+    function setupCancelButtons() {
+      document.querySelectorAll('.cancel-reply-button').forEach(button => {
+        button.addEventListener('click', async (e) => {
+          e.preventDefault();
+          
+          if (!confirm('Czy na pewno chcesz anulować wysłanie tego emaila?')) {
+            return;
+          }
+          
+          const scheduledEmailId = button.dataset.scheduledId;
+          const originalText = button.textContent;
+          
+          button.disabled = true;
+          button.textContent = 'Anulowanie...';
+          
+          try {
+            const response = await fetch(`/cancel_reply/${scheduledEmailId}`, {
+              method: 'POST'
+            });
+            
+            if (response.ok) {
+              showMessage('Wysłanie emaila zostało anulowane');
+              loadEmails(); // Odśwież emaile
+            } else {
+              showMessage('Błąd podczas anulowania', 'error');
+            }
+          } catch (error) {
+            showMessage('Błąd połączenia', 'error');
+          } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+          }
+        });
+      });
+    }
+
+    // === FUNKCJE TIMERA ===
+
+    function clearAllCountdowns() {
+      currentState.countdownIntervals.forEach(interval => clearInterval(interval));
+      currentState.countdownIntervals.clear();
+    }
+
+    function startCountdown(scheduledEmailId, scheduledTime) {
+      const countdownElement = document.getElementById(`countdown-${scheduledEmailId}`);
+      if (!countdownElement) return;
+
+      const interval = setInterval(() => {
+        const now = new Date();
+        const scheduledDate = new Date(scheduledTime + 'Z');
+        const timeDiff = scheduledDate - now;
+        
+        if (timeDiff > 0) {
+          const minutes = Math.floor(timeDiff / 60000);
+          const seconds = Math.floor((timeDiff % 60000) / 1000);
+          countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+          countdownElement.textContent = 'Wysyłanie...';
+          clearInterval(interval);
+          currentState.countdownIntervals.delete(scheduledEmailId);
+          // Odśwież emaile po 2 sekundach
+          setTimeout(() => loadEmails(), 2000);
+        }
+      }, 1000);
+
+      currentState.countdownIntervals.set(scheduledEmailId, interval);
+    }
+
+    function setupCountdowns() {
+      clearAllCountdowns();
+      currentState.pendingEmails.forEach(scheduledEmail => {
+        startCountdown(scheduledEmail.id, scheduledEmail.scheduled_time);
+      });
+    }
+
+    // === FUNKCJE ŁADOWANIA DANYCH ===
+
+    async function loadEmails() {
+      showLoading();
+      
+      try {
+        let url = '/';
+        const params = new URLSearchParams();
+        
+        if (currentState.activeCategory) {
+          url = `/category/${encodeURIComponent(currentState.activeCategory)}`;
+        } else if (currentState.activeCategory === 'archiwum') {
+          url = '/archiwum';
+        }
+        
+        if (currentState.selectedEmail) {
+          params.set('selected_email', currentState.selectedEmail);
+        }
+        
+        if (params.toString()) {
+          url += '?' + params.toString();
+        }
+
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        
+        const data = await response.json();
+        
+        // Aktualizuj stan
+        currentState.userVisibleEmails = data.userVisibleEmails || [];
+        currentState.pendingEmails = data.pendingEmails || [];
+        
+        // Aktualizuj UI
+        updateEmailAccountsTabs();
+        updateCategoryTabs();
+        renderEmails(data.emails || []);
+        
+        // Skonfiguruj interakcje
+        setupReplyForms();
+        setupCancelButtons();
+        setupCountdowns();
+        toggleSummaries();
+        setupTextareaAutoResize();
+        
+      } catch (error) {
+        console.error('Error loading emails:', error);
+        showMessage('Błąd podczas ładowania emaili', 'error');
+      } finally {
+        hideLoading();
       }
     }
 
-    // Zapisuj pozycję scrolla przy kliknięciu w linki kategorii/kont
-    function setupScrollSaving() {
-      // Linki kategorii i kont email
-      document.querySelectorAll('.account-tab, .tab-link').forEach(link => {
-        link.addEventListener('click', saveScrollPosition);
-      });
-
-      // Formularze odpowiedzi
-      document.querySelectorAll('form[action="/reply"]').forEach(form => {
-        form.addEventListener('submit', saveScrollPosition);
-      });
-
-      // Formularze anulowania odpowiedzi
-      document.querySelectorAll('form[action^="/cancel_reply/"]').forEach(form => {
-        form.addEventListener('submit', saveScrollPosition);
-      });
-
-      // Formularz dodawania konta email
-      const addEmailForm = document.querySelector('form[action="/add_email_account"]');
-      if (addEmailForm) {
-        addEmailForm.addEventListener('submit', saveScrollPosition);
+    function renderEmails(emails) {
+      const container = document.getElementById('emails-container');
+      
+      if (emails.length === 0) {
+        container.innerHTML = `
+          <div class="no-emails">
+            <p>Brak wiadomości do wyświetlenia</p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdź inne kategorie lub dodaj nowe konto e-mail</p>
+          </div>
+        `;
+        return;
       }
+
+      container.innerHTML = emails.map(email => {
+        const pendingForEmail = currentState.pendingEmails.find(p => p.email_id === email.id);
+        
+        return `
+          <div class="email-card">
+            <div class="email-header">
+              <div class="email-meta">
+                <div class="email-meta-item">
+                  <span class="email-meta-label">Od:</span>
+                  <span>${email.sent_from}</span>
+                </div>
+                <div class="email-meta-item">
+                  <span class="email-meta-label">Do:</span>
+                  <span>${email.sent_to}</span>
+                </div>
+              </div>
+              
+              <div class="email-subject">
+                <span class="email-meta-label">Temat:</span>
+                <span>${email.subject}</span>
+              </div>
+
+              <div class="classification-date-row">
+                <div class="classification-badge">
+                  ${email.classification}
+                </div>
+
+                <div class="email-date">
+                  Odebrano: 
+                  ${email.received_at ? new Date(email.received_at).toLocaleString('pl-PL') : 'brak daty'}
+                </div>
+              </div>
+            </div>
+
+            <div class="email-body">
+              <div class="email-body-header">Treść wiadomości:</div>
+              <div class="email-content">${email.content}</div>
+              
+              ${email.summary ? `
+                <div class="email-summary" id="summary-${email.id}" style="display: none;">
+                  <strong>Streszczenie:</strong>
+                  <div class="email-summary-content">${email.summary}</div>
+                </div>
+              ` : ''}
+
+              <div class="reply-section">
+                ${pendingForEmail ? `
+                  <div class="pending-reply-section">
+                    <div class="pending-reply-info">
+                      <div class="pending-reply-timer">
+                        ⏰ Odpowiedź zostanie wysłana za: <span id="countdown-${pendingForEmail.id}"></span>
+                      </div>
+                      <div class="pending-reply-text">
+                        "${pendingForEmail.reply_text.length > 100 ? pendingForEmail.reply_text.substring(0, 100) + '...' : pendingForEmail.reply_text}"
+                      </div>
+                    </div>
+                    <button class="cancel-reply-button" data-scheduled-id="${pendingForEmail.id}">
+                      Anuluj wysłanie
+                    </button>
+                  </div>
+                ` : `
+                  <form data-action="reply">
+                    <input type="hidden" name="email_id" value="${email.id}">
+                    <h4>Odpowiedź na wiadomość</h4>
+                    <textarea name="reply_text" id="reply_${email.id}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">${email.suggested_reply || ''}</textarea>
+                    <button type="submit">Zaplanuj odpowiedź (wyśle się za 5 min)</button>
+                  </form>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    // === POZOSTAŁE FUNKCJE ===
+    // === DODATKOWE FUNKCJE ===
 
-    // Funkcja do liczenia słów
-    function countWords(text) {
-      return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-    }
-
-    // Funkcja do pokazywania/ukrywania streszczeń na podstawie liczby słów
     function toggleSummaries() {
       const emailCards = document.querySelectorAll('.email-card');
       
@@ -553,9 +759,8 @@
         
         if (content) {
           const text = content.textContent.trim();
-          const charCount = text.length;  // liczba znaków z odstępami
+          const charCount = text.length;
           
-          // Pokazuj streszczenie jeśli tekst ma więcej niż 300 znaków
           if (summary && charCount > 300) {
             summary.style.display = 'block';
           }
@@ -563,71 +768,57 @@
       });
     }
 
-    // Funkcja odliczania czasu dla oczekujących emaili
-    function updateCountdowns() {
-      {% if pending_emails %}
-      {% for scheduled_email in pending_emails %}
-      (function() {
-        const scheduledTime = new Date('{{ scheduled_email.scheduled_time.isoformat() }}Z');
-        const countdownElement = document.getElementById('countdown-{{ scheduled_email.id }}');
-        
-        if (countdownElement) {
-          const now = new Date();
-          const timeDiff = scheduledTime - now;
-          
-          if (timeDiff > 0) {
-            const minutes = Math.floor(timeDiff / 60000);
-            const seconds = Math.floor((timeDiff % 60000) / 1000);
-            countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          } else {
-            countdownElement.textContent = 'Wysyłanie...';
-            // Zapisz pozycję przed odświeżeniem
-            saveScrollPosition();
-            setTimeout(() => location.reload(), 2000);
-          }
-        }
-      })();
-      {% endfor %}
-      {% endif %}
+    function setupTextareaAutoResize() {
+      document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+          this.style.height = 'auto';
+          this.style.height = this.scrollHeight + 'px';
+        });
+      });
     }
 
     // === INICJALIZACJA ===
-    
-    // Uruchom po załadowaniu strony
+
     document.addEventListener('DOMContentLoaded', function() {
-      // Przywróć pozycję scrolla
-      restoreScrollPosition();
-      
-      // Skonfiguruj zapisywanie pozycji scrolla
-      setupScrollSaving();
-      
-      // Pozostałe funkcje
-      toggleSummaries();
-      updateCountdowns();
-      
-      // Aktualizuj odliczanie co sekundę
-      setInterval(updateCountdowns, 1000);
-    });
-
-    // Zapisz pozycję przed opuszczeniem strony (backup)
-    window.addEventListener('beforeunload', saveScrollPosition);
-
-    // Smooth scroll dla linków - zachowane bez zmian
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
+      // Skonfiguruj formularz dodawania emaila
+      document.getElementById('add-email-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-          behavior: 'smooth'
-        });
+        
+        const formData = new FormData(e.target);
+        const button = e.target.querySelector('button[type="submit"]');
+        const originalText = button.textContent;
+        
+        button.disabled = true;
+        button.textContent = 'Dodawanie...';
+        
+        try {
+          const response = await fetch('/add_email_account', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            const result = await response.text();
+            if (result.includes('dodany')) {
+              showAddEmailMessage('Adres został dodany pomyślnie!');
+              e.target.reset();
+              loadEmails(); // Odśwież dane
+            } else {
+              showAddEmailMessage('Błąd: ' + result, 'error');
+            }
+          } else {
+            showAddEmailMessage('Błąd podczas dodawania adresu', 'error');
+          }
+        } catch (error) {
+          showAddEmailMessage('Błąd połączenia', 'error');
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
       });
-    });
 
-    // Auto-resize dla textarea - zachowane bez zmian
-    document.querySelectorAll('textarea').forEach(textarea => {
-      textarea.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = this.scrollHeight + 'px';
-      });
+      // Załaduj początkowe dane
+      loadEmails();
     });
   </script>
 </body>

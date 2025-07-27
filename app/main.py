@@ -384,6 +384,44 @@ async def receive_email(
     db.refresh(email)
     return {"status": "ok", "id": email.id}
 
+@app.get("/api/emails")
+def get_emails_api(
+    category: Optional[str] = None,
+    selected_email: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    # Tutaj logika pobierania emaili
+    emails = get_emails_for_user(db, current_user)  # Twoja logika
+    pending_emails = get_pending_emails_for_user(db, current_user)
+    
+    return {
+        "emails": [
+            {
+                "id": email.id,
+                "sent_from": email.sent_from,
+                "sent_to": email.sent_to,
+                "subject": email.subject,
+                "content": email.content,
+                "summary": email.summary,
+                "classification": email.classification,
+                "suggested_reply": email.suggested_reply,
+                "received_at": email.received_at.isoformat() if email.received_at else None
+            }
+            for email in emails
+        ],
+        "userVisibleEmails": [cred.email for cred in current_user.selected_gmail_credentials],
+        "pendingEmails": [
+            {
+                "id": pe.id,
+                "email_id": pe.email_id,
+                "reply_text": pe.reply_text,
+                "scheduled_time": pe.scheduled_time.isoformat()
+            }
+            for pe in pending_emails
+        ]
+    }
+    
 @app.post("/reply")
 def schedule_reply(
     background_tasks: BackgroundTasks,

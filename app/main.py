@@ -427,51 +427,69 @@ async def add_email_account(
             "pending_emails": get_pending_emails_for_user(db, current_user)
         })
 
-@app.post("/webhook")
-async def receive_email(
-    user_email: str = Form(...),
-    subject: str = Form(...),
-    content: str = Form(...),
-    classification: str = Form(...),
-    suggested_reply: str = Form(...),
-    summary: str = Form(None),
-    mail_id: str = Form(None),
-    thread_id: str = Form(None),
-    received_from: str = Form(None),
-    db: Session = Depends(get_db),
-):
-    credential = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(user_email)).first()
-    if not credential:
-        raise HTTPException(status_code=400, detail="Nie znaleziono danych konta Gmail dla tego adresu")
-    email = Email(
-        sent_to=user_email.lower(),
-        sent_from=received_from,
-        subject=subject,
-        content=content,
-        classification=classification,
-        suggested_reply=suggested_reply,
-        summary=summary,
-        mail_id=mail_id,
-        thread_id=thread_id,
-        received_from=received_from,
-    )
-    db.add(email)
-    db.commit()
-    db.refresh(email)
-    return {"status": "ok", "id": email.id}
+
 
 @app.post("/reply")
 async def schedule_reply(
     background_tasks: BackgroundTasks,
     email_id: int = Form(...), 
-    reply_text: str = Form(...), 
+    reply_text: str = Form(...),
+    send_immediately: str = Form("false"),  # Dodaj ten parametr
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user_from_cookie)
 ):
-    try:
-        await schedule_reply_api(background_tasks, email_id, reply_text, db, current_user)
-        return RedirectResponse(url="/", status_code=302)
-    except HTTPException:
+    email = db.query(Email).filter(Email.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
+    
+    # Sprawdź czy użytkownik ma dostęp do tego emaila
+    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+    if email.sent_to not in visible_addresses:
+        raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
+    
+    if send_immediately.lower() == "true":
+        # Wyślij natychmiast
+        try:
+            sent_to_clean = email.sent_to.strip().lower()
+            credentials = db.query(GmailCredentials).filter(GmailCredentials.login.ilike(sent_to_clean)).first()
+            if not credentials:
+                raise HTTPException(status_code=400, detail="Brak konfiguracji SMTP")
+            
+            recipient = extract_email(email.sent_from)
+            msg = EmailMessage()
+            msg["Subject"] = f"Odpowiedź: {email.subject}"
+            msg["From"] = credentials.login
+            msg["To"] = recipient
+            msg.set_content(reply_text)
+            
+            with smtplib.SMTP(credentials.smtp_server, credentials.smtp_port) as server:
+                if credentials.use_tls:
+                    server.starttls()
+                decrypted_password = decrypt_password(credentials.encrypted_password)
+                server.login(credentials.login, decrypted_password)
+                server.send_message(msg)
+            
+            # Oznacz email jako zarchiwizowany
+            email.is_archived = True
+            db.commit()
+            
+            return RedirectResponse(url="/", status_code=302)
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Błąd wysyłania emaila: {str(e)}")
+    else:
+        # Zaplanuj wysłanie za 5 minut (oryginalny kod)
+        scheduled_email = ScheduledEmail(
+            email_id=email_id,
+            reply_text=reply_text,
+            scheduled_time=datetime.datetime.utcnow() + datetime.timedelta(minutes=5),
+            status=EmailStatus.PENDING
+        )
+        db.add(scheduled_email)
+        db.commit()
+        db.refresh(scheduled_email)
+        
+        background_tasks.add_task(send_delayed_email, scheduled_email.id, 5)
         return RedirectResponse(url="/", status_code=302)
 
 @app.post("/cancel_reply/{scheduled_email_id}")

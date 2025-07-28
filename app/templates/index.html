@@ -517,27 +517,38 @@
 
     function setupReplyForms() {
       document.querySelectorAll('form[data-action="reply"]').forEach(form => {
+        let sendImmediately = false;
+
+        // Wyłap kliknięcie przycisku i ustaw flagę
+        form.querySelectorAll('button[type="submit"]').forEach(button => {
+          button.addEventListener('click', (e) => {
+            sendImmediately = button.value === 'true';
+          });
+        });
+
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
-          
+
           const formData = new FormData(form);
-          const button = form.querySelector('button[type="submit"]');
+          formData.set('send_immediately', sendImmediately ? 'true' : 'false');
+
+          const button = form.querySelector('button[type="submit"]:focus') || form.querySelector('button[type="submit"]');
           const originalText = button.textContent;
-          
+
           button.disabled = true;
-          button.textContent = 'Wysyłanie...';
-          
+          button.textContent = sendImmediately ? 'Wysyłanie teraz...' : 'Wysyłanie...';
+
           try {
             const response = await fetch('/reply', {
               method: 'POST',
               body: formData
             });
-            
+
             if (response.ok) {
-              showMessage('Odpowiedź została zaplanowana!');
-              loadEmails(); // Odśwież emaile, żeby pokazać timer
+              showMessage(sendImmediately ? 'Odpowiedź wysłana!' : 'Odpowiedź została zaplanowana!');
+              loadEmails(); // Odśwież emaile
             } else {
-              showMessage('Błąd podczas planowania odpowiedzi', 'error');
+              showMessage('Błąd podczas wysyłania odpowiedzi', 'error');
             }
           } catch (error) {
             showMessage('Błąd połączenia', 'error');
@@ -548,6 +559,7 @@
         });
       });
     }
+
 
     function setupCancelButtons() {
       document.querySelectorAll('.cancel-reply-button').forEach(button => {
@@ -756,12 +768,19 @@
                     </button>
                   </div>
                 ` : `
-                  <form data-action="reply">
+                  <form data-action="reply" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
                     <input type="hidden" name="email_id" value="${email.id}">
-                    <h4>Odpowiedź na wiadomość</h4>
+                    <h4 style="flex-basis: 100%;">Odpowiedź na wiadomość</h4>
                     <textarea name="reply_text" id="reply_${email.id}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">${email.suggested_reply || ''}</textarea>
-                    <button type="submit">Zaplanuj odpowiedź (wyśle się za 5 min)</button>
+
+                    <button type="submit" name="send_immediately" value="false" style="flex-grow: 1;">
+                      Zaplanuj odpowiedź (wyśle się za 5 min)
+                    </button>
+                    <button type="submit" name="send_immediately" value="true" style="flex-grow: 1; background-color: #28a745; color: white;">
+                      Wyślij teraz
+                    </button>
                   </form>
+
                 `}
               </div>
             </div>

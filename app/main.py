@@ -23,8 +23,10 @@ from enum import Enum
 from .db import SessionLocal, engine
 from .models import Base, User, Email, GmailCredentials, ScheduledEmail
 
-load_dotenv()
 
+
+load_dotenv()
+ADMIN_KEY = os.getenv("ADMIN_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY")
 FERNET_KEY = os.getenv("FERNET_KEY")
 
@@ -557,6 +559,8 @@ def login_post(request: Request, db: Session = Depends(get_db), email: str = For
     response.set_cookie(key="user_email", value=user.login_app, httponly=True)
     return response
 
+
+
 @app.get("/register", response_class=HTMLResponse)
 def register_get(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
@@ -566,10 +570,21 @@ def register_post(
     request: Request,
     login_app: str = Form(...),
     password: str = Form(...),
+    admin_key: str = Form(...)  # Dodaj to pole do formularza HTML
 ):
+    # Sprawdź klucz administratora
+    if admin_key != ADMIN_KEY:
+        return templates.TemplateResponse(
+            "register.html",
+            {
+                "request": request,
+                "error": "Nieprawidłowy klucz administratora."
+            }
+        )
+    
+    # Reszta kodu bez zmian
     db: Session = SessionLocal()
     existing_user = db.query(User).filter_by(login_app=login_app).first()
-
     if existing_user:
         return templates.TemplateResponse(
             "register.html",
@@ -578,13 +593,11 @@ def register_post(
                 "error": "Użytkownik o tym loginie już istnieje."
             }
         )
-
     hashed_pw = pwd_context.hash(password)
     new_user = User(login_app=login_app, hashed_password=hashed_pw)
     db.add(new_user)
     db.commit()
     db.close()
-
     response = RedirectResponse(url="/login", status_code=303)
     return response
 

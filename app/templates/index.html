@@ -263,16 +263,22 @@
       margin: 1rem 0;
     }
 
-    .message.error {
+    .message.error, .error-message {
       background: #fee;
       border: 1px solid #fcc;
       color: #c33;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
     }
 
-    .message.success {
+    .message.success, .success-message {
       background: #efe;
       border: 1px solid #cfc;
       color: #393;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
     }
 
     .no-emails {
@@ -328,8 +334,6 @@
         flex-direction: column;
         align-items: flex-start;
       }
-
-
     }
   </style>
 </head>
@@ -338,24 +342,44 @@
     <h1>System Maili Użytkowników</h1>
   </div>
 
-  <div class="controls-section">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-      <div>
-        <h3>Dodaj nowe konto e-mail</h3>
-        <form id="add-email-form" method="post" action="/add_email_account">
-          <div class="form-group">
-            <label for="email_address">Adres e-mail:</label>
-            <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
-          </div>
-          <button type="submit">Dodaj konto</button>
-        </form>
-        <div id="add-email-messages"></div>
-      </div>
-      <div>
-        <a href="/logout" class="logout-button">Wyloguj się</a>
-      </div>
+<div class="controls-section">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 2rem;">
+    
+    <!-- Sekcja DODAWANIA konta -->
+    <div style="flex: 1; min-width: 300px;">
+      <h3>Dodaj nowe konto e-mail</h3>
+      <form id="add-email-form">
+        <div class="form-group">
+          <label for="email_address">Adres e-mail:</label>
+          <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
+        </div>
+        <button type="submit">Dodaj konto</button>
+      </form>
+      <div id="add-email-messages"></div>
+    </div>
+
+    <!-- Sekcja USUWANIA konta -->
+    <div id="remove-email-section" style="flex: 1; min-width: 300px; margin-top: 0;">
+      <h3>Usuń konto e-mail</h3>
+      <form id="remove-email-form">
+        <div class="form-group">
+          <label for="remove_email_address">Wybierz adres do usunięcia:</label>
+          <select id="remove_email_address" name="email_address" required>
+            <option value="">-- Wybierz adres --</option>
+          </select>
+        </div>
+        <button type="submit" style="background-color: #dc3545; border-color: #dc3545;">Usuń konto</button>
+      </form>
+      <div id="remove-email-messages"></div>
+    </div>
+
+    <!-- Przycisk Wyloguj -->
+    <div style="align-self: flex-start;">
+      <a href="/logout" class="logout-button">Wyloguj się</a>
     </div>
   </div>
+</div>
+
 
   <!-- Taby wyboru kont email -->
   <div class="email-accounts-tabs">
@@ -439,7 +463,17 @@
 
     function showAddEmailMessage(message, type = 'success') {
       const container = document.getElementById('add-email-messages');
-      container.innerHTML = `<div class="message ${type}">${message}</div>`;
+      const className = type === 'error' ? 'error-message' : 'success-message';
+      container.innerHTML = `<div class="${className}">${message}</div>`;
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 5000);
+    }
+
+    function showRemoveEmailMessage(message, type = 'success') {
+      const container = document.getElementById('remove-email-messages');
+      const className = type === 'error' ? 'error-message' : 'success-message';
+      container.innerHTML = `<div class="${className}">${message}</div>`;
       setTimeout(() => {
         container.innerHTML = '';
       }, 5000);
@@ -458,6 +492,7 @@
 
     function updateEmailAccountsTabs() {
       const container = document.getElementById('email-accounts-container');
+      
       container.innerHTML = `
         <div class="account-tab ${!currentState.selectedEmail ? 'active' : ''}" data-email="" data-category="${currentState.activeCategory}">
           Wszystkie konta
@@ -473,6 +508,9 @@
         `;
       });
 
+      // Aktualizuj sekcję usuwania
+      updateRemoveEmailSection();
+
       // Dodaj event listenery
       container.querySelectorAll('.account-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -480,6 +518,23 @@
           loadEmails();
         });
       });
+    }
+
+    function updateRemoveEmailSection() {
+      const removeSection = document.getElementById('remove-email-section');
+      const removeSelect = document.getElementById('remove_email_address');
+      
+      if (currentState.userVisibleEmails.length > 0) {
+        removeSection.style.display = 'block';
+        
+        // Aktualizuj opcje w select
+        removeSelect.innerHTML = '<option value="">-- Wybierz adres --</option>';
+        currentState.userVisibleEmails.forEach(email => {
+          removeSelect.innerHTML += `<option value="${email}">${email}</option>`;
+        });
+      } else {
+        removeSection.style.display = 'none';
+      }
     }
 
     function updateCategoryTabs() {
@@ -559,7 +614,6 @@
         });
       });
     }
-
 
     function setupCancelButtons() {
       document.querySelectorAll('.cancel-reply-button').forEach(button => {
@@ -752,37 +806,42 @@
                 </div>
               ` : ''}
 
-              <div class="reply-section">
-                ${pendingForEmail ? `
-                  <div class="pending-reply-section">
-                    <div class="pending-reply-info">
-                      <div class="pending-reply-timer">
-                        ⏰ Odpowiedź zostanie wysłana za: <span id="countdown-${pendingForEmail.id}"></span>
+              ${currentState.activeCategory !== 'archiwum' ? `
+                <div class="reply-section">
+                  ${pendingForEmail ? `
+                    <div class="pending-reply-section">
+                      <div class="pending-reply-info">
+                        <div class="pending-reply-timer">
+                          ⏰ Odpowiedź zostanie wysłana za: <span id="countdown-${pendingForEmail.id}"></span>
+                        </div>
+                        <div class="pending-reply-text">
+                          "${pendingForEmail.reply_text.length > 100 ? pendingForEmail.reply_text.substring(0, 100) + '...' : pendingForEmail.reply_text}"
+                        </div>
                       </div>
-                      <div class="pending-reply-text">
-                        "${pendingForEmail.reply_text.length > 100 ? pendingForEmail.reply_text.substring(0, 100) + '...' : pendingForEmail.reply_text}"
-                      </div>
+                      <button class="cancel-reply-button" data-scheduled-id="${pendingForEmail.id}">
+                        Anuluj wysłanie
+                      </button>
                     </div>
-                    <button class="cancel-reply-button" data-scheduled-id="${pendingForEmail.id}">
-                      Anuluj wysłanie
-                    </button>
-                  </div>
-                ` : `
-                  <form data-action="reply" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-                    <input type="hidden" name="email_id" value="${email.id}">
-                    <h4 style="flex-basis: 100%;">Odpowiedź na wiadomość</h4>
-                    <textarea name="reply_text" id="reply_${email.id}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">${email.suggested_reply || ''}</textarea>
+                  ` : `
+                    <form data-action="reply" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                      <input type="hidden" name="email_id" value="${email.id}">
+                      <h4 style="flex-basis: 100%;">Odpowiedź na wiadomość</h4>
+                      <textarea name="reply_text" id="reply_${email.id}" class="reply-textarea" placeholder="Wpisz swoją odpowiedź...">${email.suggested_reply || ''}</textarea>
 
-                    <button type="submit" name="send_immediately" value="false" style="flex-grow: 1;">
-                      Zaplanuj odpowiedź (wyśle się za 5 min)
-                    </button>
-                    <button type="submit" name="send_immediately" value="true" style="flex-grow: 1; background-color: #28a745; color: white;">
-                      Wyślij teraz
-                    </button>
-                  </form>
-
-                `}
-              </div>
+                      <button type="submit" name="send_immediately" value="false" style="flex-grow: 1;">
+                        Zaplanuj odpowiedź (wyśle się za 5 min)
+                      </button>
+                      <button type="submit" name="send_immediately" value="true" style="flex-grow: 1; background-color: #28a745; color: white;">
+                        Wyślij teraz
+                      </button>
+                    </form>
+                  `}
+                </div>
+              ` : `
+                <div class="reply-section" style="text-align: center; color: #6c757d; font-style: italic;">
+                  📁 Wiadomość w archiwum - brak możliwości odpowiedzi
+                </div>
+              `}
             </div>
           </div>
         `;
@@ -855,6 +914,39 @@
         }
       });
 
+      // Skonfiguruj formularz usuwania emaila
+      document.getElementById('remove-email-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const button = e.target.querySelector('button[type="submit"]');
+        const originalText = button.textContent;
+        
+        button.disabled = true;
+        button.textContent = 'Usuwanie...';
+        
+        try {
+          const response = await fetch('/api/remove_email_account', {
+            method: 'POST', 
+            body: formData
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            showRemoveEmailMessage(result.message);
+            e.target.reset();
+            loadEmails(); // Odśwież dane
+          } else {
+            const error = await response.json();
+            showRemoveEmailMessage(error.detail, 'error');
+          }
+        } catch (error) {
+          showRemoveEmailMessage('Błąd połączenia', 'error');
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      });
       // Załaduj początkowe dane
       loadEmails();
     });

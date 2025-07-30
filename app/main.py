@@ -367,6 +367,28 @@ async def add_email_account_api(
 
     return JSONResponse({"status": "success", "message": f"Adres {email_address} został dodany."})
 
+@app.post("/api/remove_email_account")
+async def remove_email_account_api(
+    email_address: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie),
+):
+    """API endpoint do usuwania konta email"""
+    email_address = email_address.strip().lower()
+    
+    credential = db.query(GmailCredentials).filter_by(email=email_address).first()
+    if not credential:
+        raise HTTPException(status_code=400, detail=f"Adres {email_address} nie istnieje w gmail_credentials.")
+    
+    if credential not in current_user.selected_gmail_credentials:
+        raise HTTPException(status_code=400, detail=f"Adres {email_address} nie jest przypisany do Twojego konta.")
+    
+    current_user.selected_gmail_credentials.remove(credential)
+    db.commit()
+    
+    return JSONResponse({"status": "success", "message": f"Adres {email_address} został usunięty."})
+
+
 # ===== ZACHOWANE ORYGINALNE ENDPOINTY HTML - POPRAWIONE =====
 
 @app.get("/category/{category_name}", response_class=HTMLResponse)

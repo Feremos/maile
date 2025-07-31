@@ -353,7 +353,7 @@
           <label for="email_address">Adres e-mail:</label>
           <input type="email" id="email_address" name="email_address" required placeholder="przyklad@firma.pl">
         </div>
-        <button type="submit">Dodaj konto</button>
+        <button type="submit" style = 'background-color: #393;'>Dodaj konto</button>
       </form>
       <div id="add-email-messages"></div>
     </div>
@@ -523,19 +523,18 @@
     function updateRemoveEmailSection() {
       const removeSection = document.getElementById('remove-email-section');
       const removeSelect = document.getElementById('remove_email_address');
-      
-      if (currentState.userVisibleEmails.length > 0) {
-        removeSection.style.display = 'block';
-        
-        // Aktualizuj opcje w select
-        removeSelect.innerHTML = '<option value="">-- Wybierz adres --</option>';
-        currentState.userVisibleEmails.forEach(email => {
-          removeSelect.innerHTML += `<option value="${email}">${email}</option>`;
-        });
-      } else {
-        removeSection.style.display = 'none';
-      }
+
+      // Sekcja zawsze widoczna
+      removeSection.style.display = 'block';
+
+      // Zawsze pokazuj select z opcjami (nawet jeśli pusty)
+      removeSelect.innerHTML = '<option value="">-- Brak dostępnych adresów --</option>';
+
+      currentState.userVisibleEmails.forEach(email => {
+        removeSelect.innerHTML += `<option value="${email}">${email}</option>`;
+      });
     }
+
 
     function updateCategoryTabs() {
       const container = document.getElementById('categories-container');
@@ -815,7 +814,7 @@
                           ⏰ Odpowiedź zostanie wysłana za: <span id="countdown-${pendingForEmail.id}"></span>
                         </div>
                         <div class="pending-reply-text">
-                          "${pendingForEmail.reply_text.length > 100 ? pendingForEmail.reply_text.substring(0, 100) + '...' : pendingForEmail.reply_text}"
+                          "${pendingForEmail.reply_text.length > 100 ? pendingForEmail.reply_text.substring(0, 2000) : pendingForEmail.reply_text}"
                         </div>
                       </div>
                       <button class="cancel-reply-button" data-scheduled-id="${pendingForEmail.id}">

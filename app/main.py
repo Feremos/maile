@@ -18,6 +18,10 @@ from typing import List, Optional
 from fastapi import Query
 import asyncio
 from enum import Enum
+from datetime import timedelta
+from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import RedirectResponse
+from sqlalchemy import or_
 # to run : uvicorn app.main:app --reload
 
 from .db import SessionLocal, engine
@@ -81,7 +85,8 @@ def extract_email(full: str):
     return match.group(1) if match else full.strip()
 
 def get_emails_for_user(db: Session, user: User, category: str = None, selected_email: str = None):
-    visible_addresses = [cred.email for cred in user.selected_gmail_credentials]
+    visible_addresses = [extract_email(cred.email) for cred in user.selected_gmail_credentials]
+
     if not visible_addresses:
         return []
     
@@ -101,13 +106,52 @@ def get_emails_for_user(db: Session, user: User, category: str = None, selected_
     
     return query.order_by(Email.received_at.desc()).all()
 
-def get_current_user_from_cookie(db: Session = Depends(get_db), user_email: str = Cookie(None)):
-    if not user_email:
-        raise HTTPException(status_code=401, detail="Nie jesteś zalogowany")
+
+
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # tydzień ważności
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
+
+
+def get_current_user_from_cookie(
+    db: Session = Depends(get_db),
+    token: Optional[str] = Cookie(None, alias="access_token")
+):
+    if not token:
+        raise HTTPException(status_code=401, detail="Brak tokenu uwierzytelniającego")
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_email = payload.get("sub")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Token nie zawiera adresu email")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Nieprawidłowy token")
+    
     user = get_user(db, user_email)
     if not user:
-        raise HTTPException(status_code=401, detail="Nieprawidłowy użytkownik")
+        raise HTTPException(status_code=401, detail="Użytkownik nie istnieje")
     return user
+
+
+class AuthRedirectMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        token = request.cookies.get("access_token")
+        path = request.url.path
+        # Sprawdź czy URL wymaga logowania
+        protected_paths = ["/" "/dashboard", "/emails",""]
+        if any(request.url.path.startswith(p) for p in protected_paths):
+            if not token:
+                if path != "/login":
+                    return RedirectResponse(url="/login", status_code=302)
+        return await call_next(request)
+
+app.add_middleware(AuthRedirectMiddleware)
+
 
 def get_pending_emails_for_user(db: Session, user: User):
     """Pobierz oczekujące emaile dla użytkownika"""
@@ -306,7 +350,7 @@ async def schedule_reply_api(
     if email.sent_to not in visible_addresses:
         raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
     
-    # Zapisz zaplanowany email w bazie danych
+    # Zapisz zaplanowany email
     scheduled_email = ScheduledEmail(
         email_id=email_id,
         reply_text=reply_text,
@@ -314,13 +358,19 @@ async def schedule_reply_api(
         status=EmailStatus.PENDING
     )
     db.add(scheduled_email)
+
+    # 💡 Nadpisujemy suggested_reply -> reply_text
+    email.suggested_reply = reply_text  # lub "", jeśli pole nie dopuszcza NULL
+    
+
     db.commit()
     db.refresh(scheduled_email)
     
-    # Zaplanuj wysłanie emaila w tle
+    # Zaplanuj wysyłkę
     background_tasks.add_task(send_delayed_email, scheduled_email.id, 5)
     
     return JSONResponse({"status": "success", "message": "Odpowiedź została zaplanowana"})
+
 
 @app.post("/api/cancel_reply/{scheduled_email_id}")
 async def cancel_reply_api(
@@ -550,13 +600,36 @@ async def get_pending_emails_api_old(
 def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-@app.post("/login", response_class=HTMLResponse)
-def login_post(request: Request, db: Session = Depends(get_db), email: str = Form(...), password: str = Form(...)):
+@app.post("/login", response_class=RedirectResponse)
+def login_post(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
     user = get_user(db, email)
     if not user or not verify_password(password, user.hashed_password):
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Nieprawidłowy email lub hasło"})
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Nieprawidłowy email lub hasło"
+        })
+
+    # Utwórz JWT
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = create_access_token(
+        data={"sub": user.login_app},
+        expires_delta=access_token_expires
+    )
+
     response = RedirectResponse(url="/", status_code=302)
-    response.set_cookie(key="user_email", value=user.login_app, httponly=True)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,  # Ustaw na True jeśli używasz HTTPS
+        samesite="lax",
+        max_age=int(access_token_expires.total_seconds())
+    )
     return response
 
 
@@ -604,5 +677,8 @@ def register_post(
 @app.get("/logout")
 def logout():
     response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie("user_email")
+    response.delete_cookie(
+        key="access_token",  # nazwa ciasteczka z JWT
+        path="/",            # ważne, musi być zgodne z tym co było przy set_cookie
+    )
     return response

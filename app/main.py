@@ -266,20 +266,12 @@ async def get_emails_api(
     current_user: User = Depends(get_current_user_from_cookie)
 ):
     """API endpoint do pobierania emaili w formacie JSON"""
-    
-    # Sprawdź czy request oczekuje JSON
-    accept_header = request.headers.get("accept", "")
-    if "application/json" not in accept_header:
-        # Jeśli nie, przekieruj do zwykłego endpointu HTML
-        return await get_emails_html(request, category, selected_email, db, current_user)
-    
     emails = get_emails_for_user(db, current_user, category, selected_email)
-    pending_emails = get_pending_emails_for_user(db, current_user)
     
-    # Konwertuj emaile do formatu JSON
-    emails_json = []
+    # Konwertuj emaile do słowników
+    emails_dict = []
     for email in emails:
-        emails_json.append({
+        emails_dict.append({
             "id": email.id,
             "sent_from": email.sent_from,
             "sent_to": email.sent_to,
@@ -292,10 +284,12 @@ async def get_emails_api(
             "is_archived": email.is_archived
         })
     
-    # Konwertuj oczekujące emaile do formatu JSON
-    pending_json = []
+    pending_emails = get_pending_emails_for_user(db, current_user)
+    
+    # Konwertuj pending_emails do słowników
+    pending_dict = []
     for pe in pending_emails:
-        pending_json.append({
+        pending_dict.append({
             "id": pe.id,
             "email_id": pe.email_id,
             "reply_text": pe.reply_text,
@@ -304,9 +298,9 @@ async def get_emails_api(
         })
     
     return JSONResponse({
-        "emails": emails_json,
+        "emails": emails_dict,
         "userVisibleEmails": [cred.email for cred in current_user.selected_gmail_credentials],
-        "pendingEmails": pending_json,
+        "pendingEmails": pending_dict,
         "activeCategory": category or "",
         "selectedEmail": selected_email or ""
     })
@@ -398,6 +392,59 @@ async def cancel_reply_api(
     else:
         raise HTTPException(status_code=400, detail="Nie można anulować tego emaila")
 
+@app.post("/api/archive_email/{email_id}")
+async def archive_email_api(
+    email_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """API endpoint do archiwizacji emaila"""
+    email = db.query(Email).filter(Email.id == email_id).first()
+    
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
+    
+    # Sprawdź czy użytkownik ma dostęp do tego emaila
+    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+    if email.sent_to not in visible_addresses:
+        raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
+    
+    email.is_archived = True
+    db.commit()
+    
+    return JSONResponse({"status": "success", "message": "Email został przeniesiony do archiwum"})
+
+# Zmodyfikuj istniejący endpoint cancel_reply_api
+@app.post("/api/cancel_reply/{scheduled_email_id}")
+async def cancel_reply_api(
+    scheduled_email_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """API endpoint do anulowania odpowiedzi"""
+    scheduled_email = db.query(ScheduledEmail).filter(ScheduledEmail.id == scheduled_email_id).first()
+    
+    if not scheduled_email:
+        raise HTTPException(status_code=404, detail="Zaplanowany email nie znaleziony")
+    
+    # Sprawdź czy użytkownik ma dostęp do tego emaila
+    email = db.query(Email).filter(Email.id == scheduled_email.email_id).first()
+    if email:
+        visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+        if email.sent_to not in visible_addresses:
+            raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
+    
+    if scheduled_email.status == EmailStatus.PENDING:
+        # Zapisz tekst odpowiedzi w suggested_reply przed anulowaniem
+        if email:
+            email.suggested_reply = scheduled_email.reply_text
+            
+        scheduled_email.status = EmailStatus.CANCELLED
+        db.commit()
+        return JSONResponse({"status": "success", "message": "Wysłanie emaila zostało anulowane"})
+    else:
+        raise HTTPException(status_code=400, detail="Nie można anulować tego emaila")
+    
 @app.post("/api/add_email_account")
 async def add_email_account_api(
     email_address: str = Form(...),
@@ -409,7 +456,7 @@ async def add_email_account_api(
 
     credential = db.query(GmailCredentials).filter_by(email=email_address).first()
     if not credential:
-        raise HTTPException(status_code=400, detail=f"Adres {email_address} nie istnieje w gmail_credentials.")
+        raise HTTPException(status_code=400, detail=f"Adres {email_address} nie istnieje w bazie danych")
 
     if credential in current_user.selected_gmail_credentials:
         raise HTTPException(status_code=400, detail=f"Adres {email_address} już jest dodany.")

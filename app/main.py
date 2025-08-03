@@ -414,6 +414,28 @@ async def archive_email_api(
     
     return JSONResponse({"status": "success", "message": "Email został przeniesiony do archiwum"})
 
+@app.post("/api/unarchive_email/{email_id}")
+async def unarchive_email_api(
+    email_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_cookie)
+):
+    """API endpoint do archiwizacji emaila"""
+    email = db.query(Email).filter(Email.id == email_id).first()
+    
+    if not email:
+        raise HTTPException(status_code=404, detail="Email nie znaleziony")
+    
+    # Sprawdź czy użytkownik ma dostęp do tego emaila
+    visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
+    if email.sent_to not in visible_addresses:
+        raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
+    
+    email.is_archived = False
+    db.commit()
+    
+    return JSONResponse({"status": "success", "message": "Email został odarchiwizowany"})
+
 # Zmodyfikuj istniejący endpoint cancel_reply_api
 @app.post("/api/cancel_reply/{scheduled_email_id}")
 async def cancel_reply_api(
@@ -504,11 +526,12 @@ async def read_emails_by_category(
 @app.get("/archiwum", response_class=HTMLResponse)
 async def read_archived_emails(
     request: Request,
+    selected_email: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
     # Wywołaj bezpośrednio funkcję HTML zamiast API
-    return await get_emails_html(request, "archiwum", None, db, current_user)
+    return await get_emails_html(request, "archiwum", selected_email, db, current_user)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_emails(

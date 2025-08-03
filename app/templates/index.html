@@ -280,74 +280,125 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-          // Email selection
-          const emailItems = document.querySelectorAll('.email-item');
-          const emailDetail = document.getElementById('emailDetail');
-          const emptyState = document.getElementById('emptyState');
-          
-          emailItems.forEach(item => {
-              item.addEventListener('click', function(e) {
-                  e.preventDefault();
-                  const emailId = this.getAttribute('data-id');
-                  const selectedEmail = document.getElementById('emailFilter').value;
-                  
-                  // Fetch all emails and find the specific one
-                  fetch(`/api/emails?selected_email=${selectedEmail}`)
-                      .then(response => {
-                          if (!response.ok) {
-                              throw new Error('Network response was not ok');
-                          }
-                          return response.json();
-                      })
-                      .then(data => {
-                          const email = data.emails.find(e => e.id == emailId);
-                          if (email) {
-                              displayEmailDetails(email);
-                          } else {
-                              throw new Error('Email not found in response');
-                          }
-                      })
-                      .catch(error => {
-                          console.error('Error fetching email details:', error);
-                          alert('Wystąpił błąd podczas ładowania wiadomości');
-                      });
-              });
-          });
+            // Theme switch
+            document.getElementById('themeSwitch').addEventListener('change', function() {
+                document.body.classList.toggle('dark-theme', this.checked);
+                localStorage.setItem('darkTheme', this.checked);
+            });
+            
+            // Load theme preference from localStorage
+            const darkTheme = localStorage.getItem('darkTheme') === 'true';
+            document.getElementById('themeSwitch').checked = darkTheme;
+            if (darkTheme) {
+                document.body.classList.add('dark-theme');
+            } else {
+                document.body.classList.remove('dark-theme');
+            }
 
-          function displayEmailDetails(email) {
-              document.getElementById('emailId').value = email.id;
-              document.getElementById('emailSubject').textContent = email.subject;
-              document.getElementById('emailFrom').textContent = email.sent_from;
-              document.getElementById('emailTo').textContent = email.sent_to;
-              document.getElementById('emailDate').textContent = new Date(email.received_at).toLocaleString();
-              document.getElementById('emailCategory').textContent = email.classification || 'brak';
-              document.getElementById('emailContent').textContent = email.content;
-              document.getElementById('suggestedReply').textContent = email.suggested_reply || 'Brak sugerowanej odpowiedzi';
-              document.getElementById('replyText').value = email.suggested_reply || '';
-              
-              // Update archive button
-              const archiveBtn = document.getElementById('archiveBtn');
-              if (email.is_archived) {
-                  archiveBtn.classList.add('btn-success');
-                  archiveBtn.classList.remove('btn-outline-secondary');
-                  archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Odarchiwizuj';
-              } else {
-                  archiveBtn.classList.remove('btn-success');
-                  archiveBtn.classList.add('btn-outline-secondary');
-                  archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Archiwizuj';
-              }
-              
-              emailDetail.style.display = 'block';
-              emptyState.style.display = 'none';
-          }
+            // Email selection
+            const emailItems = document.querySelectorAll('.email-item');
+            const emailDetail = document.getElementById('emailDetail');
+            const emptyState = document.getElementById('emptyState');
+            
+            emailItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const emailId = this.getAttribute('data-id');
+                    const selectedEmail = document.getElementById('emailFilter').value;
+                    const isArchiveView = window.location.pathname.includes('/archiwum');
+                    
+                    // Użyj odpowiedniego endpointu w zależności od tego, czy jesteśmy w archiwum
+                    const url = isArchiveView 
+                        ? `/api/emails?category=archiwum&selected_email=${selectedEmail}`
+                        : `/api/emails?selected_email=${selectedEmail}`;
+                    
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            const email = data.emails.find(e => e.id == emailId);
+                            if (email) {
+                                displayEmailDetails(email);
+                            } else {
+                                throw new Error('Email not found in response');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching email details:', error);
+                            alert('Wystąpił błąd podczas ładowania wiadomości');
+                        });
+                });
+            });
 
+            function displayEmailDetails(email) {
+                document.getElementById('emailId').value = email.id;
+                document.getElementById('emailSubject').textContent = email.subject;
+                document.getElementById('emailFrom').textContent = email.sent_from;
+                document.getElementById('emailTo').textContent = email.sent_to;
+                document.getElementById('emailDate').textContent = new Date(email.received_at).toLocaleString();
+                document.getElementById('emailCategory').textContent = email.classification || 'brak';
+                document.getElementById('emailContent').textContent = email.content;
+                document.getElementById('suggestedReply').textContent = email.suggested_reply || 'Brak sugerowanej odpowiedzi';
+                document.getElementById('replyText').value = email.suggested_reply || '';
+                
+                // Update archive button
+                const archiveBtn = document.getElementById('archiveBtn');
+                if (email.is_archived) {
+                    archiveBtn.classList.add('btn-success');
+                    archiveBtn.classList.remove('btn-outline-secondary');
+                    archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Odarchiwizuj';
+                    // Dodaj obsługę odarchiwizowania
+                    archiveBtn.onclick = function() {
+                        fetch(`/api/unarchive_email/${email.id}`, {
+                            method: 'POST'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                window.location.href = '/archiwum';  // Pozostań w archiwum po odarchiwizowaniu
+                            }
+                        });
+                    };
+                } else {
+                    archiveBtn.classList.remove('btn-success');
+                    archiveBtn.classList.add('btn-outline-secondary');
+                    archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Archiwizuj';
+                    // Dodaj standardową obsługę archiwizacji
+                    archiveBtn.onclick = function() {
+                        fetch(`/api/archive_email/${email.id}`, {
+                            method: 'POST'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                             if (data.status === 'success') {
+                                // 1. Ukryj szczegóły emaila
+                                emailDetail.style.display = 'none';
+                                emptyState.style.display = 'block';
+                                    // 2. Odśwież listę emaili });
+                                window.location.reload();
+                            }
+                        });
+                        
+                    };
+                }
+                
+                emailDetail.style.display = 'block';
+                emptyState.style.display = 'none';
+            }
 
             // Email filter
             document.getElementById('emailFilter').addEventListener('change', function() {
                 const selectedEmail = this.value;
                 const currentCategory = '{{ active_category }}' || '';
+                const isArchiveView = window.location.pathname.includes('/archiwum');
                 
-                if (currentCategory) {
+                if (isArchiveView) {
+                    window.location.href = `/archiwum?selected_email=${selectedEmail}`;
+                } else if (currentCategory) {
                     window.location.href = `/category/${currentCategory}?selected_email=${selectedEmail}`;
                 } else {
                     window.location.href = `/?selected_email=${selectedEmail}`;
@@ -376,21 +427,6 @@
                 .then(response => {
                     if (response.redirected) {
                         window.location.href = response.url;
-                    }
-                });
-            });
-
-            // Archive button
-            document.getElementById('archiveBtn').addEventListener('click', function() {
-                const emailId = document.getElementById('emailId').value;
-                
-                fetch(`/api/archive_email/${emailId}`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        window.location.reload();
                     }
                 });
             });
@@ -463,7 +499,14 @@
 
             // Auto-refresh emails every 60 seconds
             setInterval(() => {
-                fetch('/api/emails?selected_email=' + document.getElementById('emailFilter').value)
+                const selectedEmail = document.getElementById('emailFilter').value;
+                const isArchiveView = window.location.pathname.includes('/archiwum');
+                
+                const url = isArchiveView 
+                    ? `/api/emails?category=archiwum&selected_email=${selectedEmail}`
+                    : `/api/emails?selected_email=${selectedEmail}`;
+                
+                fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         updatePendingEmails(data.pendingEmails);
@@ -512,27 +555,13 @@
                     });
                 });
             }
+
+            // Automatycznie załaduj pierwszy email
+            const firstEmail = document.querySelector('.email-item');
+            if (firstEmail && !window.location.hash) {
+                firstEmail.click();
+            }
         });
-        document.getElementById('themeSwitch').addEventListener('change', function() {
-            document.body.classList.toggle('dark-theme', this.checked);
-            localStorage.setItem('darkTheme', this.checked);
-        });
-        // Load theme preference from localStorage
-        const darkTheme = localStorage.getItem('darkTheme') === 'true';
-        document.getElementById('themeSwitch').checked = darkTheme;
-        if (darkTheme) {
-            document.body.classList.add('dark-theme');
-        } else {
-            document.body.classList.remove('dark-theme');
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-        // Automatycznie załaduj pierwszy email
-        const firstEmail = document.querySelector('.email-item');
-        if (firstEmail && !window.location.hash) {
-            firstEmail.click();
-        }
-    });
     </script>
 </body>
 </html>

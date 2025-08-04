@@ -366,31 +366,6 @@ async def schedule_reply_api(
     return JSONResponse({"status": "success", "message": "Odpowiedź została zaplanowana"})
 
 
-@app.post("/api/cancel_reply/{scheduled_email_id}")
-async def cancel_reply_api(
-    scheduled_email_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie)
-):
-    """API endpoint do anulowania odpowiedzi"""
-    scheduled_email = db.query(ScheduledEmail).filter(ScheduledEmail.id == scheduled_email_id).first()
-    
-    if not scheduled_email:
-        raise HTTPException(status_code=404, detail="Zaplanowany email nie znaleziony")
-    
-    # Sprawdź czy użytkownik ma dostęp do tego emaila
-    email = db.query(Email).filter(Email.id == scheduled_email.email_id).first()
-    if email:
-        visible_addresses = [cred.email for cred in current_user.selected_gmail_credentials]
-        if email.sent_to not in visible_addresses:
-            raise HTTPException(status_code=403, detail="Brak dostępu do tego emaila")
-    
-    if scheduled_email.status == EmailStatus.PENDING:
-        scheduled_email.status = EmailStatus.CANCELLED
-        db.commit()
-        return JSONResponse({"status": "success", "message": "Wysłanie emaila zostało anulowane"})
-    else:
-        raise HTTPException(status_code=400, detail="Nie można anulować tego emaila")
 
 @app.post("/api/archive_email/{email_id}")
 async def archive_email_api(

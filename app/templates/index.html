@@ -97,6 +97,65 @@
             background-color: #333;
             color: #ffffff;
         }
+
+        /* Animacje dla przycisków wysyłania */
+        .btn-sending {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+
+        .btn-sending::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            color: white;
+        }
+
+        .btn-sending.btn-primary::after {
+            color: white;
+        }
+
+        .btn-sending.btn-success::after {
+            color: white;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Animacja sukcesu */
+        .btn-success-animation {
+            animation: successPulse 0.6s ease-in-out;
+        }
+
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); background-color: #28a745; }
+            100% { transform: scale(1); }
+        }
+
+        /* Animacja błędu */
+        .btn-error-animation {
+            animation: errorShake 0.6s ease-in-out;
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+        }
+
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
     </style>
 </head>
 <body>
@@ -112,32 +171,32 @@
 
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link {% if not active_category %}active{% endif %}" href="/">
+                            <a class="nav-link {% if not active_category %}active{% endif %}" href="#" onclick="changeCategory('', event)">
                                 <i class="bi bi-inbox"></i> Wszystkie
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if active_category == 'faktura' %}active{% endif %}" href="/category/faktura">
+                            <a class="nav-link {% if active_category == 'faktura' %}active{% endif %}" href="#" onclick="changeCategory('faktura', event)">
                                 <i class="bi bi-star"></i> Faktura
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if active_category == 'reklamacja' %}active{% endif %}" href="/category/reklamacja">
+                            <a class="nav-link {% if active_category == 'reklamacja' %}active{% endif %}" href="#" onclick="changeCategory('reklamacja', event)">
                                 <i class="bi bi-people"></i> Reklamacja
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if active_category == 'oferta' %}active{% endif %}" href="/category/oferta">
+                            <a class="nav-link {% if active_category == 'oferta' %}active{% endif %}" href="#" onclick="changeCategory('oferta', event)">
                                 <i class="bi bi-tag"></i> Oferta
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if active_category == 'rezygnacja' %}active{% endif %}" href="/category/rezygnacja">
+                            <a class="nav-link {% if active_category == 'rezygnacja' %}active{% endif %}" href="#" onclick="changeCategory('rezygnacja', event)">
                                 <i class="bi bi-archive"></i> Rezygnacja
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if active_category == 'archiwum' %}active{% endif %}" href="/archiwum">
+                            <a class="nav-link {% if active_category == 'archiwum' %}active{% endif %}" href="#" onclick="changeCategory('archiwum', event)">
                                 <i class="bi bi-archive"></i> Archiwum
                             </a>
                         </li>
@@ -279,6 +338,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Globalne zmienne do przechowywania stanu
+        let currentCategory = '{{ active_category }}' || '';
+        let currentSelectedEmail = '{{ selected_email }}' || '';
+        let isSubmitting = false; // Zabezpieczenie przed wielokrotnym kliknięciem
+
         document.addEventListener('DOMContentLoaded', function() {
             // Theme switch
             document.getElementById('themeSwitch').addEventListener('change', function() {
@@ -304,13 +368,11 @@
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
                     const emailId = this.getAttribute('data-id');
-                    const selectedEmail = document.getElementById('emailFilter').value;
-                    const isArchiveView = window.location.pathname.includes('/archiwum');
                     
-                    // Użyj odpowiedniego endpointu w zależności od tego, czy jesteśmy w archiwum
-                    const url = isArchiveView 
-                        ? `/api/emails?category=archiwum&selected_email=${selectedEmail}`
-                        : `/api/emails?selected_email=${selectedEmail}`;
+                    // Użyj odpowiedniego endpointu w zależności od kategorii
+                    const url = currentCategory === 'archiwum' 
+                        ? `/api/emails?category=archiwum&selected_email=${currentSelectedEmail}`
+                        : `/api/emails?category=${currentCategory}&selected_email=${currentSelectedEmail}`;
                     
                     fetch(url)
                         .then(response => {
@@ -334,83 +396,29 @@
                 });
             });
 
-            function displayEmailDetails(email) {
-                document.getElementById('emailId').value = email.id;
-                document.getElementById('emailSubject').textContent = email.subject;
-                document.getElementById('emailFrom').textContent = email.sent_from;
-                document.getElementById('emailTo').textContent = email.sent_to;
-                document.getElementById('emailDate').textContent = new Date(email.received_at).toLocaleString();
-                document.getElementById('emailCategory').textContent = email.classification || 'brak';
-                document.getElementById('emailContent').textContent = email.content;
-                document.getElementById('suggestedReply').textContent = email.suggested_reply || 'Brak sugerowanej odpowiedzi';
-                document.getElementById('replyText').value = email.suggested_reply || '';
-                
-                // Update archive button
-                const archiveBtn = document.getElementById('archiveBtn');
-                if (email.is_archived) {
-                    archiveBtn.classList.add('btn-success');
-                    archiveBtn.classList.remove('btn-outline-secondary');
-                    archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Odarchiwizuj';
-                    // Dodaj obsługę odarchiwizowania
-                    archiveBtn.onclick = function() {
-                        fetch(`/api/unarchive_email/${email.id}`, {
-                            method: 'POST'
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                window.location.href = '/archiwum';  // Pozostań w archiwum po odarchiwizowaniu
-                            }
-                        });
-                    };
-                } else {
-                    archiveBtn.classList.remove('btn-success');
-                    archiveBtn.classList.add('btn-outline-secondary');
-                    archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Archiwizuj';
-                    // Dodaj standardową obsługę archiwizacji
-                    archiveBtn.onclick = function() {
-                        fetch(`/api/archive_email/${email.id}`, {
-                            method: 'POST'
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                             if (data.status === 'success') {
-                                // 1. Ukryj szczegóły emaila
-                                emailDetail.style.display = 'none';
-                                emptyState.style.display = 'block';
-                                    // 2. Odśwież listę emaili });
-                                window.location.reload();
-                            }
-                        });
-                        
-                    };
-                }
-                
-                emailDetail.style.display = 'block';
-                emptyState.style.display = 'none';
-            }
-
-            // Email filter
+            // Email filter - zaktualizowana funkcja
             document.getElementById('emailFilter').addEventListener('change', function() {
-                const selectedEmail = this.value;
-                const currentCategory = '{{ active_category }}' || '';
-                const isArchiveView = window.location.pathname.includes('/archiwum');
-                
-                if (isArchiveView) {
-                    window.location.href = `/archiwum?selected_email=${selectedEmail}`;
-                } else if (currentCategory) {
-                    window.location.href = `/category/${currentCategory}?selected_email=${selectedEmail}`;
-                } else {
-                    window.location.href = `/?selected_email=${selectedEmail}`;
-                }
+                currentSelectedEmail = this.value;
+                refreshEmailList();
             });
 
-            // Reply form
+            // Reply form - zaktualizowana funkcja z animacjami
             document.getElementById('replyForm').addEventListener('submit', function(e) {
                 e.preventDefault();
+                
+                // Zabezpieczenie przed wielokrotnym kliknięciem
+                if (isSubmitting) {
+                    return;
+                }
+                
                 const emailId = document.getElementById('emailId').value;
                 const replyText = document.getElementById('replyText').value;
                 const sendOption = e.submitter.value;
+                const submitButton = e.submitter;
+                
+                // Rozpocznij animację wysyłania
+                startSendingAnimation(submitButton);
+                isSubmitting = true;
                 
                 const formData = new FormData();
                 formData.append('email_id', emailId);
@@ -425,9 +433,37 @@
                     body: formData
                 })
                 .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
+                    if (response.ok) {
+                        // Animacja sukcesu
+                        showSuccessAnimation(submitButton);
+                        
+                        // Odśwież listę emaili i ukryj szczegóły po krótkiej przerwie
+                        setTimeout(() => {
+                            refreshEmailList();
+                            const emailDetail = document.getElementById('emailDetail');
+                            const emptyState = document.getElementById('emptyState');
+                            emailDetail.style.display = 'none';
+                            emptyState.style.display = 'block';
+                            
+                            // Resetuj przycisk
+                            resetButton(submitButton, sendOption);
+                            isSubmitting = false;
+                        }, 800);
+                    } else {
+                        throw new Error('Network response was not ok');
                     }
+                })
+                .catch(error => {
+                    console.error('Error sending reply:', error);
+                    
+                    // Animacja błędu
+                    showErrorAnimation(submitButton);
+                    
+                    // Resetuj przycisk po animacji błędu
+                    setTimeout(() => {
+                        resetButton(submitButton, sendOption);
+                        isSubmitting = false;
+                    }, 1000);
                 });
             });
 
@@ -499,12 +535,9 @@
 
             // Auto-refresh emails every 60 seconds
             setInterval(() => {
-                const selectedEmail = document.getElementById('emailFilter').value;
-                const isArchiveView = window.location.pathname.includes('/archiwum');
-                
-                const url = isArchiveView 
-                    ? `/api/emails?category=archiwum&selected_email=${selectedEmail}`
-                    : `/api/emails?selected_email=${selectedEmail}`;
+                const url = currentCategory === 'archiwum' 
+                    ? `/api/emails?category=archiwum&selected_email=${currentSelectedEmail}`
+                    : `/api/emails?category=${currentCategory}&selected_email=${currentSelectedEmail}`;
                 
                 fetch(url)
                     .then(response => response.json())
@@ -513,55 +546,229 @@
                     });
             }, 60000);
 
-            function updatePendingEmails(pendingEmails) {
-                const pendingList = document.getElementById('pendingEmailsList');
-                pendingList.innerHTML = '';
-                
-                pendingEmails.forEach(pe => {
-                    const scheduledTime = new Date(pe.scheduled_time);
-                    const card = document.createElement('div');
-                    card.className = 'card mb-2 pending-email';
-                    card.setAttribute('data-id', pe.id);
-                    
-                    card.innerHTML = `
-                        <div class="card-body p-2">
-                            <div class="d-flex justify-content-between">
-                                <small class="text-muted">${scheduledTime.toLocaleString()}</small>
-                                <button class="btn btn-sm btn-outline-danger cancel-reply-btn" data-id="${pe.id}">
-                                    <i class="bi bi-x"></i>
-                                </button>
-                            </div>
-                            <p class="mb-0 small">${pe.reply_text.substring(0, 50)}...</p>
-                        </div>
-                    `;
-                    
-                    pendingList.appendChild(card);
-                    
-                    // Add event listener to the new button
-                    card.querySelector('.cancel-reply-btn').addEventListener('click', function() {
-                        const pendingId = this.getAttribute('data-id');
-                        
-                        if (confirm('Czy na pewno chcesz anulować tę odpowiedź?')) {
-                            fetch(`/api/cancel_reply/${pendingId}`, {
-                                method: 'POST'
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    window.location.reload();
-                                }
-                            });
-                        }
-                    });
-                });
-            }
-
             // Automatycznie załaduj pierwszy email
             const firstEmail = document.querySelector('.email-item');
             if (firstEmail && !window.location.hash) {
                 firstEmail.click();
             }
         });
+
+        // Nowa funkcja do zmiany kategorii z zachowaniem wybranej skrzynki
+        function changeCategory(category, event) {
+            event.preventDefault();
+            currentCategory = category;
+            
+            // Buduj URL z zachowaniem wybranej skrzynki
+            let url;
+            if (category === 'archiwum') {
+                url = '/archiwum';
+            } else if (category === '') {
+                url = '/';
+            } else {
+                url = `/category/${category}`;
+            }
+            
+            // Dodaj parametr selected_email jeśli jest wybrany
+            if (currentSelectedEmail) {
+                url += `?selected_email=${encodeURIComponent(currentSelectedEmail)}`;
+            }
+            
+            window.location.href = url;
+        }
+
+        // Nowa funkcja do odświeżania listy emaili
+        function refreshEmailList() {
+            const url = currentCategory === 'archiwum' 
+                ? `/api/emails?category=archiwum&selected_email=${currentSelectedEmail}`
+                : `/api/emails?category=${currentCategory}&selected_email=${currentSelectedEmail}`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // Zaktualizuj listę emaili
+                    const emailList = document.getElementById('emailList');
+                    emailList.innerHTML = '';
+                    
+                    data.emails.forEach(email => {
+                        const emailItem = document.createElement('a');
+                        emailItem.href = '#';
+                        emailItem.className = `list-group-item list-group-item-action email-item ${email.is_archived ? 'archived' : ''}`;
+                        emailItem.setAttribute('data-id', email.id);
+                        emailItem.setAttribute('data-category', email.classification || '');
+                        
+                        const receivedDate = email.received_at ? new Date(email.received_at).toLocaleDateString() : '';
+                        const summary = email.summary || (email.content ? email.content.substring(0, 100) + '...' : '');
+                        
+                        emailItem.innerHTML = `
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${email.sent_from}</h6>
+                                <small>${receivedDate}</small>
+                            </div>
+                            <p class="mb-1"><strong>${email.subject}</strong></p>
+                            <small class="text-muted">${summary}</small>
+                        `;
+                        
+                        // Dodaj event listener do nowego elementu
+                        emailItem.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const emailId = this.getAttribute('data-id');
+                            const email = data.emails.find(e => e.id == emailId);
+                            if (email) {
+                                displayEmailDetails(email);
+                            }
+                        });
+                        
+                        emailList.appendChild(emailItem);
+                    });
+                    
+                    // Zaktualizuj pending emails
+                    updatePendingEmails(data.pendingEmails);
+                })
+                .catch(error => {
+                    console.error('Error refreshing email list:', error);
+                });
+        }
+
+        // Funkcja displayEmailDetails przeniesiona na poziom globalny
+        function displayEmailDetails(email) {
+            const emailDetail = document.getElementById('emailDetail');
+            const emptyState = document.getElementById('emptyState');
+            
+            document.getElementById('emailId').value = email.id;
+            document.getElementById('emailSubject').textContent = email.subject;
+            document.getElementById('emailFrom').textContent = email.sent_from;
+            document.getElementById('emailTo').textContent = email.sent_to;
+            document.getElementById('emailDate').textContent = new Date(email.received_at).toLocaleString();
+            document.getElementById('emailCategory').textContent = email.classification || 'brak';
+            document.getElementById('emailContent').textContent = email.content;
+            document.getElementById('suggestedReply').textContent = email.suggested_reply || 'Brak sugerowanej odpowiedzi';
+            document.getElementById('replyText').value = email.suggested_reply || '';
+            
+            // Update archive button
+            const archiveBtn = document.getElementById('archiveBtn');
+            if (email.is_archived) {
+                archiveBtn.classList.add('btn-success');
+                archiveBtn.classList.remove('btn-outline-secondary');
+                archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Odarchiwizuj';
+                archiveBtn.onclick = function() {
+                    fetch(`/api/unarchive_email/${email.id}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            refreshEmailList();
+                            emailDetail.style.display = 'none';
+                            emptyState.style.display = 'block';
+                        }
+                    });
+                };
+            } else {
+                archiveBtn.classList.remove('btn-success');
+                archiveBtn.classList.add('btn-outline-secondary');
+                archiveBtn.innerHTML = '<i class="bi bi-archive"></i> Archiwizuj';
+                archiveBtn.onclick = function() {
+                    fetch(`/api/archive_email/${email.id}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                         if (data.status === 'success') {
+                            refreshEmailList();
+                            emailDetail.style.display = 'none';
+                            emptyState.style.display = 'block';
+                        }
+                    });
+                };
+            }
+            
+            emailDetail.style.display = 'block';
+            emptyState.style.display = 'none';
+        }
+
+        // Funkcja updatePendingEmails przeniesiona na poziom globalny
+        function updatePendingEmails(pendingEmails) {
+            const pendingList = document.getElementById('pendingEmailsList');
+            pendingList.innerHTML = '';
+            
+            pendingEmails.forEach(pe => {
+                const scheduledTime = new Date(pe.scheduled_time);
+                const card = document.createElement('div');
+                card.className = 'card mb-2 pending-email';
+                card.setAttribute('data-id', pe.id);
+                
+                card.innerHTML = `
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">${scheduledTime.toLocaleString()}</small>
+                            <button class="btn btn-sm btn-outline-danger cancel-reply-btn" data-id="${pe.id}">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <p class="mb-0 small">${pe.reply_text.substring(0, 50)}...</p>
+                    </div>
+                `;
+                
+                pendingList.appendChild(card);
+                
+                // Add event listener to the new button
+                card.querySelector('.cancel-reply-btn').addEventListener('click', function() {
+                    const pendingId = this.getAttribute('data-id');
+                    
+                    if (confirm('Czy na pewno chcesz anulować tę odpowiedź?')) {
+                        fetch(`/api/cancel_reply/${pendingId}`, {
+                            method: 'POST'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                window.location.reload();
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        // Funkcje animacji dla przycisków wysyłania
+        function startSendingAnimation(button) {
+            const originalText = button.innerHTML;
+            button.setAttribute('data-original-text', originalText);
+            button.classList.add('btn-sending');
+            button.disabled = true;
+            
+            // Ustaw tekst w zależności od typu przycisku
+            if (button.value === 'immediate') {
+                button.innerHTML = '<i class="bi bi-send"></i> Wysyłanie...';
+            } else {
+                button.innerHTML = '<i class="bi bi-clock"></i> Planowanie...';
+            }
+        }
+
+        function showSuccessAnimation(button) {
+            button.classList.remove('btn-sending');
+            button.classList.add('btn-success-animation');
+            
+            if (button.value === 'immediate') {
+                button.innerHTML = '<i class="bi bi-check"></i> Wysłano!';
+            } else {
+                button.innerHTML = '<i class="bi bi-check"></i> Zaplanowano!';
+            }
+        }
+
+        function showErrorAnimation(button) {
+            button.classList.remove('btn-sending');
+            button.classList.add('btn-error-animation');
+            button.innerHTML = '<i class="bi bi-x"></i> Błąd!';
+        }
+
+        function resetButton(button, sendOption) {
+            const originalText = button.getAttribute('data-original-text');
+            button.innerHTML = originalText;
+            button.classList.remove('btn-sending', 'btn-success-animation', 'btn-error-animation');
+            button.disabled = false;
+            button.removeAttribute('data-original-text');
+        }
     </script>
 </body>
 </html>
